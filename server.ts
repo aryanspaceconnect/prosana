@@ -38,6 +38,76 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", service: "prosana AI Backend", timestamp: new Date().toISOString() });
 });
 
+// Google OAuth Compliance: Privacy Policy & Terms Endpoints
+app.get("/privacy", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>prosana - Privacy Policy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 28px; color: #0f172a; margin-bottom: 8px; }
+    h2 { font-size: 18px; color: #334155; margin-top: 28px; }
+    p, li { font-size: 15px; color: #475569; }
+    .card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <h1>prosana Privacy Policy</h1>
+  <p><strong>Effective Date:</strong> August 26, 2026</p>
+  <div class="card">
+    <p>prosana ("we", "our", or "us") is dedicated to protecting your privacy and health data. This Privacy Policy details how we handle information obtained through your authorized integration with Google Fit and Google Health APIs.</p>
+  </div>
+  
+  <h2>1. Data We Access & Collect</h2>
+  <p>When you explicitly authorize prosana to connect with Google Fit / Health Connect, we access only the read-only scopes you approve:</p>
+  <ul>
+    <li><strong>Activity & Steps:</strong> Step count, cadence, and active caloric expenditure.</li>
+    <li><strong>Vitals:</strong> Continuous heart rate (BPM) and daily resting heart rate.</li>
+    <li><strong>Sleep:</strong> Sleep session durations and cycle architecture.</li>
+  </ul>
+
+  <h2>2. How We Use Your Data</h2>
+  <p>Your health and fitness metrics are used strictly to provide you with personal biometrics analysis, 20-minute batch telemetry visualizations, and AI health coaching within your prosana workspace.</p>
+
+  <h2>3. Google User Data Policy Compliance (Limited Use)</h2>
+  <p>prosana complies strictly with the <a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank">Google API Services User Data Policy</a>, including the Limited Use requirements. We do <strong>not</strong> sell your data to third parties, use your data for advertising, or share your raw biometrics with unauthorized services.</p>
+
+  <h2>4. Data Storage & Deletion</h2>
+  <p>Your biometrics are stored securely in your private cloud partition. You can disconnect your Google account and purge stored biometrics at any time from the Wearables Hub in the application.</p>
+
+  <h2>5. Contact</h2>
+  <p>For questions or data deletion requests, contact: <a href="mailto:aryandusane8888@gmail.com">aryandusane8888@gmail.com</a></p>
+</body>
+</html>`);
+});
+
+app.get("/terms", (_req, res) => {
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>prosana - Terms of Service</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.6; color: #1e293b; max-width: 800px; margin: 40px auto; padding: 0 20px; }
+    h1 { font-size: 28px; color: #0f172a; margin-bottom: 8px; }
+    h2 { font-size: 18px; color: #334155; margin-top: 28px; }
+    p, li { font-size: 15px; color: #475569; }
+  </style>
+</head>
+<body>
+  <h1>prosana Terms of Service</h1>
+  <p><strong>Effective Date:</strong> August 26, 2026</p>
+  <p>By using prosana and connecting wearable devices or Google Fit, you agree to these terms. prosana provides AI-assisted wellness tracking and health insights for informational purposes only. It is not a substitute for professional medical diagnosis or clinical healthcare.</p>
+</body>
+</html>`);
+});
+
 // ==========================================
 // OPEN WEARABLES INGESTION & BATCH ENDPOINTS
 // ==========================================
