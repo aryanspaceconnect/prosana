@@ -1,0 +1,190 @@
+.ws {
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.875rem;
+  background-color: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  font-size: 0.8125rem;
+  color: #334155;
+  transition: all 0.2s ease;
+}
+
+.wsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #64748b;
+}
+
+.wsLabel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-weight: 500;
+}
+
+.wsShimmer {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: #334155;
+}
+
+.wsQuote {
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.wsChevron {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  border-radius: 0.375rem;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.wsChevron:hover {
+  color: #334155;
+  background-color: rgba(241, 245, 249, 1);
+}
+
+.wsCollapsible {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.wsCollapsible.isCollapsed {
+  grid-template-rows: 0fr;
+}
+
+.wsCollapsibleInner {
+  overflow: hidden;
+}
+
+.wsResults {
+  position: relative;
+  margin-top: 0.5rem;
+  padding-left: 0.25rem;
+}
+
+.wsRail {
+  position: absolute;
+  left: 0.5rem;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  width: 1px;
+  background-color: #e2e8f0;
+}
+
+.wsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.wsSite {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  opacity: 0.5;
+  transition: opacity 0.3s ease, color 0.3s ease;
+}
+
+.wsSite[data-state="loading"] {
+  opacity: 0.95;
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.wsSite[data-state="done"] {
+  opacity: 1;
+  color: #334155;
+}
+
+.wsBullet {
+  position: relative;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.wsDots,
+.wsGlobe,
+.wsCheck {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.wsSite[data-state="pending"] .wsDots {
+  opacity: 0.6;
+}
+.wsSite[data-state="pending"] .wsGlobe,
+.wsSite[data-state="pending"] .wsCheck {
+  opacity: 0;
+}
+
+.wsSite[data-state="loading"] .wsDots {
+  opacity: 0;
+}
+.wsSite[data-state="loading"] .wsGlobe {
+  opacity: 1;
+  color: #10b981;
+}
+.wsSite[data-state="loading"] .wsCheck {
+  opacity: 0;
+}
+
+.wsSite[data-state="done"] .wsDots,
+.wsSite[data-state="done"] .wsGlobe {
+  opacity: 0;
+}
+.wsSite[data-state="done"] .wsCheck {
+  opacity: 1;
+  color: #10b981;
+}
+
+.wsTitle {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.wsSep {
+  color: #cbd5e1;
+}
+
+.wsUrl {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.wsArrow {
+  margin-left: auto;
+  opacity: 0.4;
+  transform: rotate(45deg);
+}

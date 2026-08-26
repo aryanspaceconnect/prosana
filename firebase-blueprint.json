@@ -1,0 +1,94 @@
+{
+  "collections": {
+    "users": {
+      "schema": {
+        "displayName": "string",
+        "email": "string",
+        "photoURL": "string",
+        "preferredName": "string",
+        "locationName": "string",
+        "userPerceptionText": "string",
+        "hormonalFactors": "string",
+        "skincareGoals": "string",
+        "skinPriorities": "string",
+        "upcomingEvent": "string",
+        "height": "string",
+        "gender": "string",
+        "settings": "object",
+        "createdAt": "timestamp",
+        "updatedAt": "timestamp"
+      },
+      "subcollections": {
+        "agent_memory": {
+          "schema": {
+            "userId": "string",
+            "updatedAt": "timestamp",
+            "messages": "array",
+            "data": "map"
+          }
+        }
+      },
+      "indexes": []
+    },
+    "facial_scans": {
+      "schema": {
+        "userId": "string",
+        "imageUrl": "string",
+        "hydrationScore": "number",
+        "barrierScore": "number",
+        "clarityScore": "number",
+        "summary": "string",
+        "recommendations": "array",
+        "timestamp": "timestamp"
+      },
+      "indexes": [
+        {
+          "fields": [
+            {"field": "userId", "order": "ASCENDING"},
+            {"field": "timestamp", "order": "DESCENDING"}
+          ]
+        }
+      ]
+    },
+    "chats": {
+      "schema": {
+        "userId": "string",
+        "title": "string",
+        "messages": "array",
+        "updatedAt": "timestamp"
+      },
+      "indexes": [
+        {
+          "fields": [
+            {"field": "userId", "order": "ASCENDING"},
+            {"field": "updatedAt", "order": "DESCENDING"}
+          ]
+        }
+      ]
+    },
+    "calendar_events": {
+      "schema": {
+        "userId": "string",
+        "title": "string",
+        "date": "string",
+        "category": "string",
+        "completed": "boolean"
+      },
+      "indexes": [
+        {
+          "fields": [
+            {"field": "userId", "order": "ASCENDING"},
+            {"field": "date", "order": "ASCENDING"}
+          ]
+        }
+      ]
+    },
+    "agent_vaults": {
+      "schema": {
+        "userId": "string",
+        "updatedAt": "timestamp"
+      },
+      "indexes": []
+    }
+  }
+}
