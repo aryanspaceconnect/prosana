@@ -1239,7 +1239,48 @@ export const getCompanionSignalsTool: ToolDefinition = {
   }
 };
 
+// ============================================================================
+// OPEN WEARABLES & BIOMETRICS TELEMETRY TOOL
+// ============================================================================
+
+export const queryWearableBiometricsSchema = z.object({
+  timeframe: z.enum(['current_buffer', 'last_24_hours', 'summary']).optional().default('summary'),
+  includeGraphPoints: z.boolean().optional().default(false)
+});
+
+export const queryWearableBiometricsTool: ToolDefinition = {
+  name: 'query_wearable_biometrics',
+  description: 'Queries the user\'s real-time wearable biometrics and 20-minute micro-batch telemetry from Apple Watch, Google Fit, Oura, or Garmin. Returns Heart Rate, HRV (SDNN), step cadence, active energy burn, SpO2, autonomic stress, and recovery readiness score.',
+  parameters: queryWearableBiometricsSchema,
+  execute: async (args: z.infer<typeof queryWearableBiometricsSchema>, context: AgentContext) => {
+    try {
+      const { getConsolidatedWearableTelemetry } = await import('../lib/wearableBufferService.js');
+      const telemetry = await getConsolidatedWearableTelemetry(context.userId || 'guest_user');
+
+      return {
+        success: true,
+        deviceConnection: telemetry.connection ? {
+          provider: telemetry.connection.provider,
+          deviceName: telemetry.connection.deviceName,
+          batteryPercent: telemetry.connection.batteryPercent,
+          lastSyncedAt: telemetry.connection.lastSyncedAt,
+          status: telemetry.connection.status
+        } : null,
+        vitalsSummary: telemetry.summary,
+        totalSamplesInBuffer: telemetry.samples.length,
+        graphPoints: args.includeGraphPoints ? telemetry.samples.slice(-20) : undefined
+      };
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to query wearable biometrics telemetry'
+      };
+    }
+  }
+};
+
 export const SANA_TOOL_REGISTRY: ToolDefinition[] = [
+  queryWearableBiometricsTool,
   webSearchTool,
   webFetchTool,
   imageSearchTool,

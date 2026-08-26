@@ -286,3 +286,88 @@ export interface PopUpNotification {
   actionTarget?: 'scan' | 'calendar' | 'reports' | 'vault' | 'agent';
   autoTriggered?: boolean;
 }
+
+// Open Wearables Integration Types
+export type WearableProviderId = 
+  | 'google_fit' 
+  | 'apple_health' 
+  | 'oura' 
+  | 'whoop' 
+  | 'garmin' 
+  | 'fitbit' 
+  | 'samsung_health' 
+  | 'polar' 
+  | 'suunto';
+
+export interface WearableProviderMeta {
+  id: WearableProviderId;
+  name: string;
+  category: 'primary' | 'secondary';
+  badge?: string;
+  icon: string;
+  color: string;
+  description: string;
+  metricsSupported: string[];
+}
+
+export interface WearableConnectionState {
+  provider: WearableProviderId;
+  status: 'connected' | 'syncing' | 'disconnected' | 'error';
+  deviceName: string;
+  batteryPercent?: number;
+  lastSyncedAt: string;
+  connectedAt: string;
+  autoSyncIntervalMinutes: number; // default 20
+}
+
+export interface WearableSample {
+  timestamp: string; // ISO
+  unixMs: number;
+  heartRateBpm?: number;
+  hrvMs?: number;
+  stepsDelta?: number;
+  activeCaloriesDelta?: number;
+  spo2Percent?: number;
+  respiratoryRate?: number;
+  skinTempCelsius?: number;
+  stressLevel?: number; // 0-100 (0=relaxed, 100=extreme stress)
+}
+
+export interface WearableBatchSummary {
+  avgHeartRate: number;
+  minHeartRate: number;
+  maxHeartRate: number;
+  avgHrv: number;
+  totalSteps: number;
+  totalActiveCalories: number;
+  avgSpo2: number;
+  avgStress: number;
+  sleepScore?: number;
+  readinessScore?: number;
+}
+
+export interface WearableBatchDocument {
+  id?: string;
+  userId: string;
+  batchId: string;
+  provider: WearableProviderId;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  sampleCount: number;
+  summary: WearableBatchSummary;
+  samples: WearableSample[];
+  createdAt: string;
+}
+
+export interface WearableBufferState {
+  bufferWindowMinutes: number; // 20
+  currentSampleCount: number;
+  maxBufferSamples: number; // e.g. 20 (1 sample/min)
+  pendingSamples: WearableSample[];
+  lastFlushedAt: string | null;
+  nextFlushCountdownSeconds: number;
+  isFlushing: boolean;
+  activeConnection: WearableConnectionState | null;
+}
+

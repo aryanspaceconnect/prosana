@@ -26,6 +26,20 @@
             "messages": "array",
             "data": "map"
           }
+        },
+        "wearable_batches": {
+          "schema": {
+            "userId": "string",
+            "batchId": "string",
+            "provider": "string",
+            "startTime": "string",
+            "endTime": "string",
+            "durationMinutes": "number",
+            "sampleCount": "number",
+            "summary": "map",
+            "samples": "array",
+            "createdAt": "timestamp"
+          }
         }
       },
       "indexes": []

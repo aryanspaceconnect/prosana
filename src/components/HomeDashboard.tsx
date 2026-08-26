@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '@iconify/react';
-import { UserProfile, FacialScanResult, DailyBriefing } from '../types';
+import { UserProfile, FacialScanResult, DailyBriefing, WearableBufferState } from '../types';
 import { pickHomeGreeting, GreetingConfig } from '../lib/homeGreetings';
+import { wearableBufferService } from '../lib/wearableBufferService';
+import { WearablesHub } from './WearablesHub';
 
 interface HomeDashboardProps {
   userProfile: UserProfile | null;
@@ -36,6 +38,27 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const [variantOffset, setVariantOffset] = useState(0);
   const [isWeatherExpanded, setIsWeatherExpanded] = useState(false);
   const [activeMetricDetail, setActiveMetricDetail] = useState<MetricDetailPopup | null>(null);
+  const [isWearablesOpen, setIsWearablesOpen] = useState(false);
+
+  // Live Wearable Buffer state
+  const [wearableState, setWearableState] = useState<WearableBufferState>(() => {
+    wearableBufferService.setUserId(userProfile?.uid || 'guest_user');
+    return wearableBufferService.getBufferState();
+  });
+
+  useEffect(() => {
+    wearableBufferService.setUserId(userProfile?.uid || 'guest_user');
+    setWearableState(wearableBufferService.getBufferState());
+
+    const handleWearablesUpdate = (e: any) => {
+      if (e.detail?.state) {
+        setWearableState(e.detail.state);
+      }
+    };
+
+    window.addEventListener('prosana:wearables_updated', handleWearablesUpdate);
+    return () => window.removeEventListener('prosana:wearables_updated', handleWearablesUpdate);
+  }, [userProfile?.uid]);
 
   const rawName =
     userProfile?.preferredName ||
@@ -593,7 +616,153 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </AnimatePresence>
       </motion.div>
 
-      {/* 3. Daily Focus / Atmospheric Insights (Apple-inspired minimalist design) */}
+      {/* 3. Open Wearables Telemetry & Live 20-Min Stream Buffer Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05 }}
+        className="w-full pt-1 px-0.5"
+      >
+        <div className="rounded-[24px] bg-white border border-[#eaedf1] p-4 shadow-2xs hover:border-[#dbe0e8] transition-all duration-300">
+          <div className="flex items-center justify-between mb-3 pb-2.5 border-b border-[#f1f4f8]">
+            <div className="flex items-center space-x-2">
+              <div className="p-1.5 rounded-xl bg-slate-900 text-white">
+                <Icon icon="solar:smart-watch-bold-duotone" className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div>
+                <span className="text-[11.5px] font-bold text-[#121316] uppercase tracking-wider block leading-tight">
+                  Wearables & Biometrics
+                </span>
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {wearableState.activeConnection
+                    ? `${wearableState.activeConnection.deviceName} • 20-Min Buffer`
+                    : 'Google Fit • Apple Watch • Oura • Garmin'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsWearablesOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-[#121316] hover:bg-black text-white text-[11px] font-semibold flex items-center space-x-1 transition-all shadow-2xs cursor-pointer"
+            >
+              <span>{wearableState.activeConnection ? 'Open Graphs' : 'Connect Device'}</span>
+              <Icon icon="solar:arrow-right-linear" className="w-3.5 h-3.5 text-slate-300" />
+            </button>
+          </div>
+
+          {wearableState.activeConnection ? (
+            <div className="space-y-3">
+              {/* Metric Highlights */}
+              <div className="grid grid-cols-4 gap-2 text-left">
+                {/* Heart Rate */}
+                <div 
+                  onClick={() => setIsWearablesOpen(true)}
+                  className="p-2.5 rounded-2xl bg-rose-50/60 border border-rose-100/80 cursor-pointer hover:bg-rose-50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[9.5px] font-bold text-rose-700 uppercase">Heart Rate</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                  </div>
+                  <div className="mt-1 flex items-baseline space-x-0.5">
+                    <span className="text-base font-bold text-rose-950">
+                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ?? 68}
+                    </span>
+                    <span className="text-[9px] font-semibold text-rose-600">BPM</span>
+                  </div>
+                </div>
+
+                {/* HRV */}
+                <div 
+                  onClick={() => setIsWearablesOpen(true)}
+                  className="p-2.5 rounded-2xl bg-indigo-50/60 border border-indigo-100/80 cursor-pointer hover:bg-indigo-50 transition-colors"
+                >
+                  <span className="text-[9.5px] font-bold text-indigo-700 uppercase block">HRV (SDNN)</span>
+                  <div className="mt-1 flex items-baseline space-x-0.5">
+                    <span className="text-base font-bold text-indigo-950">
+                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.hrvMs ?? 62}
+                    </span>
+                    <span className="text-[9px] font-semibold text-indigo-600">ms</span>
+                  </div>
+                </div>
+
+                {/* Steps */}
+                <div 
+                  onClick={() => setIsWearablesOpen(true)}
+                  className="p-2.5 rounded-2xl bg-sky-50/60 border border-sky-100/80 cursor-pointer hover:bg-sky-50 transition-colors"
+                >
+                  <span className="text-[9.5px] font-bold text-sky-700 uppercase block">Steps</span>
+                  <div className="mt-1 flex items-baseline space-x-0.5">
+                    <span className="text-base font-bold text-sky-950">
+                      {wearableState.pendingSamples.reduce((acc, s) => acc + (s.stepsDelta || 0), 0) || 450}
+                    </span>
+                    <span className="text-[9px] font-semibold text-sky-600">pts</span>
+                  </div>
+                </div>
+
+                {/* Stress Index */}
+                <div 
+                  onClick={() => setIsWearablesOpen(true)}
+                  className="p-2.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80 cursor-pointer hover:bg-emerald-50 transition-colors"
+                >
+                  <span className="text-[9.5px] font-bold text-emerald-700 uppercase block">Stress</span>
+                  <div className="mt-1 flex items-baseline space-x-0.5">
+                    <span className="text-base font-bold text-emerald-950">
+                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.stressLevel ?? 24}
+                    </span>
+                    <span className="text-[9px] font-semibold text-emerald-600">/100</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 20-Minute Micro-batch progress bar ticker */}
+              <div 
+                onClick={() => setIsWearablesOpen(true)}
+                className="p-2.5 rounded-xl bg-slate-900 text-white flex items-center justify-between cursor-pointer hover:bg-black transition-colors"
+              >
+                <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs font-semibold text-slate-200">
+                    20-Min Batch Buffer: <strong>{wearableState.pendingSamples.length} / 20 accumulated</strong>
+                  </span>
+                </div>
+                <div className="flex items-center space-x-1.5 text-[11px] text-emerald-300 font-bold">
+                  <span>View Telemetry & Graphs</span>
+                  <Icon icon="solar:arrow-right-linear" className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div 
+              onClick={() => setIsWearablesOpen(true)}
+              className="p-3.5 rounded-2xl bg-gradient-to-r from-slate-50 to-sky-50/50 border border-slate-200/80 flex items-center justify-between cursor-pointer group hover:border-sky-300 transition-all"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="flex -space-x-2">
+                  <div className="w-7 h-7 rounded-full bg-white shadow-2xs border border-slate-200 flex items-center justify-center text-xs">
+                    <Icon icon="logos:google-fit" className="w-4 h-4" />
+                  </div>
+                  <div className="w-7 h-7 rounded-full bg-slate-900 text-white shadow-2xs border border-slate-700 flex items-center justify-center text-xs">
+                    <Icon icon="logos:apple" className="w-3.5 h-3.5" />
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 group-hover:text-sky-900 transition-colors">
+                    Link Apple Watch or Google Fit
+                  </p>
+                  <p className="text-[10.5px] text-slate-500">
+                    Stream continuous heart rate, HRV recovery, and 20-minute batch sync
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-800 shadow-2xs group-hover:bg-sky-600 group-hover:text-white group-hover:border-sky-600 transition-all">
+                Connect
+              </span>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* 4. Daily Focus / Atmospheric Insights (Apple-inspired minimalist design) */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -726,6 +895,13 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Open Wearables Hub Modal */}
+      <WearablesHub
+        userId={userProfile?.uid || 'guest_user'}
+        isOpen={isWearablesOpen}
+        onClose={() => setIsWearablesOpen(false)}
+      />
     </div>
   );
 };
