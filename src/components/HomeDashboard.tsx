@@ -661,27 +661,15 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[9.5px] font-bold text-rose-700 uppercase">Heart Rate</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                    {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                    ) : null}
                   </div>
                   <div className="mt-1 flex items-baseline space-x-0.5">
                     <span className="text-base font-bold text-rose-950">
-                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ?? 68}
+                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ?? '—'}
                     </span>
                     <span className="text-[9px] font-semibold text-rose-600">BPM</span>
-                  </div>
-                </div>
-
-                {/* HRV */}
-                <div 
-                  onClick={() => setIsWearablesOpen(true)}
-                  className="p-2.5 rounded-2xl bg-indigo-50/60 border border-indigo-100/80 cursor-pointer hover:bg-indigo-50 transition-colors"
-                >
-                  <span className="text-[9.5px] font-bold text-indigo-700 uppercase block">HRV (SDNN)</span>
-                  <div className="mt-1 flex items-baseline space-x-0.5">
-                    <span className="text-base font-bold text-indigo-950">
-                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.hrvMs ?? 62}
-                    </span>
-                    <span className="text-[9px] font-semibold text-indigo-600">ms</span>
                   </div>
                 </div>
 
@@ -693,40 +681,54 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                   <span className="text-[9.5px] font-bold text-sky-700 uppercase block">Steps</span>
                   <div className="mt-1 flex items-baseline space-x-0.5">
                     <span className="text-base font-bold text-sky-950">
-                      {wearableState.pendingSamples.reduce((acc, s) => acc + (s.stepsDelta || 0), 0) || 450}
+                      {wearableState.pendingSamples.reduce((acc, s) => acc + (s.stepsDelta || 0), 0).toLocaleString()}
                     </span>
-                    <span className="text-[9px] font-semibold text-sky-600">pts</span>
+                    <span className="text-[9px] font-semibold text-sky-600">steps</span>
                   </div>
                 </div>
 
-                {/* Stress Index */}
+                {/* Calories */}
+                <div 
+                  onClick={() => setIsWearablesOpen(true)}
+                  className="p-2.5 rounded-2xl bg-amber-50/60 border border-amber-100/80 cursor-pointer hover:bg-amber-50 transition-colors"
+                >
+                  <span className="text-[9.5px] font-bold text-amber-700 uppercase block">Burn</span>
+                  <div className="mt-1 flex items-baseline space-x-0.5">
+                    <span className="text-base font-bold text-amber-950">
+                      {Math.round(wearableState.pendingSamples.reduce((acc, s) => acc + (s.activeCaloriesDelta || 0), 0))}
+                    </span>
+                    <span className="text-[9px] font-semibold text-amber-600">kcal</span>
+                  </div>
+                </div>
+
+                {/* Intervals Synced */}
                 <div 
                   onClick={() => setIsWearablesOpen(true)}
                   className="p-2.5 rounded-2xl bg-emerald-50/60 border border-emerald-100/80 cursor-pointer hover:bg-emerald-50 transition-colors"
                 >
-                  <span className="text-[9.5px] font-bold text-emerald-700 uppercase block">Stress</span>
+                  <span className="text-[9.5px] font-bold text-emerald-700 uppercase block">Intervals</span>
                   <div className="mt-1 flex items-baseline space-x-0.5">
                     <span className="text-base font-bold text-emerald-950">
-                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.stressLevel ?? 24}
+                      {wearableState.pendingSamples.length}
                     </span>
-                    <span className="text-[9px] font-semibold text-emerald-600">/100</span>
+                    <span className="text-[9px] font-semibold text-emerald-600">buckets</span>
                   </div>
                 </div>
               </div>
 
-              {/* 20-Minute Micro-batch progress bar ticker */}
+              {/* Google Fit Live status banner */}
               <div 
                 onClick={() => setIsWearablesOpen(true)}
                 className="p-2.5 rounded-xl bg-slate-900 text-white flex items-center justify-between cursor-pointer hover:bg-black transition-colors"
               >
                 <div className="flex items-center space-x-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   <span className="text-xs font-semibold text-slate-200">
-                    20-Min Batch Buffer: <strong>{wearableState.pendingSamples.length} / 20 accumulated</strong>
+                    Google Fit Connected • <strong>{wearableState.pendingSamples.length} intervals recorded</strong>
                   </span>
                 </div>
                 <div className="flex items-center space-x-1.5 text-[11px] text-emerald-300 font-bold">
-                  <span>View Telemetry & Graphs</span>
+                  <span>Open Biometrics & Graphs</span>
                   <Icon icon="solar:arrow-right-linear" className="w-3.5 h-3.5" />
                 </div>
               </div>

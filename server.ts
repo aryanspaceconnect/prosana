@@ -60,7 +60,7 @@ const serverWearableBufferMap = new Map<string, {
   }>;
 }>();
 
-// 1. Providers Registry (Google Fit & Apple Health pinned first)
+// 1. Providers Registry (Google Fit is live & active; other ecosystems marked Coming Soon)
 app.get("/api/wearables/providers", (_req, res) => {
   res.json({
     status: "ok",
@@ -69,87 +69,263 @@ app.get("/api/wearables/providers", (_req, res) => {
         id: 'google_fit',
         name: 'Google Fit & Health Connect',
         category: 'primary',
-        badge: 'Popular on Android',
+        status: 'active',
+        badge: 'Live Google OAuth & REST',
         icon: 'logos:google-fit',
         color: '#4285F4',
-        description: 'Sync real-time heart rate, steps, sleep metrics, and workout logs from Google Fit and Android Health Connect.',
-        metricsSupported: ['Heart Rate', 'Step Cadence', 'Sleep Cycles', 'Active Energy', 'Respiratory Rate']
+        description: 'Direct REST API integration with Google Fit & Android Health Connect cloud pipelines. Syncs real heart rate, step count, active energy, and sleep sessions.',
+        metricsSupported: ['Step Count', 'Heart Rate (BPM)', 'Active Calories', 'Heart Minutes', 'Sleep Cycles']
       },
       {
         id: 'apple_health',
         name: 'Apple HealthKit & Watch',
-        category: 'primary',
-        badge: 'Popular on iOS',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'logos:apple',
         color: '#000000',
-        description: 'Direct integration with Apple Watch Series & Ultra. Streams continuous ECG, HRV, VO2 Max, and restful sleep stages.',
+        description: 'Apple HealthKit requires iOS Companion App for HealthKit bridge. Direct web REST API currently under private beta preview.',
         metricsSupported: ['HRV (SDNN)', 'Resting Heart Rate', 'SpO2 Blood Oxygen', 'Active Burn', 'Sleep Architecture']
       },
       {
         id: 'oura',
         name: 'Oura Ring (Gen 3 / Horizon)',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:ring-bold-duotone',
         color: '#10b981',
-        description: 'Gold-standard sleep tracking, readiness score, nocturnal skin temperature deviations, and HRV recovery.',
+        description: 'Oura Cloud v2 OAuth Webhook integration currently in certification queue.',
         metricsSupported: ['Sleep Score', 'Readiness Index', 'Skin Temp Δ', 'Nightly HRV', 'Resting HR']
       },
       {
         id: 'whoop',
         name: 'Whoop 4.0 Strap',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:chart-square-bold-duotone',
         color: '#ef4444',
-        description: 'Continuous 24/7 physiological strain scoring, autonomic recovery metrics, and sleep performance coach.',
+        description: 'Whoop Developer Platform OAuth webhook ingestion pipeline coming in next update.',
         metricsSupported: ['Day Strain', 'Recovery Score', 'Resting HR', 'HRV Trends', 'Respiratory Rate']
       },
       {
         id: 'garmin',
         name: 'Garmin Connect Ecosystem',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:watch-round-bold-duotone',
         color: '#0284c7',
-        description: 'High-precision athletic telemetry, Body Battery™ energy reserve, Pulse Ox, and stress levels.',
+        description: 'Garmin Connect Enterprise Health API OAuth push pipeline coming soon.',
         metricsSupported: ['Body Battery', 'Stress Score', 'VO2 Max', 'Cadence', 'Pulse Ox']
       },
       {
         id: 'fitbit',
         name: 'Fitbit by Google',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:heart-pulse-bold-duotone',
         color: '#0d9488',
-        description: 'Daily Readiness, Active Zone Minutes, sleep profile, and continuous skin temperature sensor metrics.',
+        description: 'Transitioning to unified Google Health REST API endpoints.',
         metricsSupported: ['Daily Readiness', 'Zone Minutes', 'Sleep Score', 'Skin Temp', 'Steps']
       },
       {
         id: 'samsung_health',
         name: 'Samsung Galaxy Watch',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:smart-watch-bold-duotone',
         color: '#6366f1',
-        description: 'BioActive sensor telemetry including body composition (BIA), optical heart rate, and sleep apnea monitoring.',
+        description: 'Samsung Privileged Health SDK web connector in partner review.',
         metricsSupported: ['BIA Body Comp', 'Heart Rate', 'SpO2', 'Sleep Score', 'Active Cal']
       },
       {
         id: 'polar',
         name: 'Polar Vantage & H10',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:heart-bold-duotone',
         color: '#f97316',
-        description: 'Precision chest-strap ECG accuracy, Nightly Recharge™ recovery, and cardio load tracking.',
+        description: 'Polar AccessLink API OAuth 2.0 connector coming soon.',
         metricsSupported: ['Nightly Recharge', 'Orthostatic HRV', 'Cardio Load', 'ECG HR']
       },
       {
         id: 'suunto',
         name: 'Suunto Race & Peak',
-        category: 'secondary',
+        category: 'coming_soon',
+        status: 'coming_soon',
+        badge: 'Coming Soon',
         icon: 'solar:compass-bold-duotone',
         color: '#8b5cf6',
-        description: 'Endurance training loads, altitude acclimation, and recovery sleep analysis.',
+        description: 'Suunto Cloud API webhook pipeline coming soon.',
         metricsSupported: ['Training Load', 'HRV Recovery', 'Altitude SpO2', 'Sleep Quality']
       }
     ]
   });
+});
+
+// 2. Real Google Fit REST API Live Sync
+app.post("/api/wearables/google-fit/sync", async (req, res) => {
+  const { userId, accessToken, startTimeMillis, endTimeMillis } = req.body;
+  if (!userId || !accessToken) {
+    return res.status(400).json({ error: "userId and Google OAuth accessToken are required" });
+  }
+
+  // Default time window: Today (start of day to now)
+  const now = Date.now();
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const startMs = Number(startTimeMillis) || startOfDay.getTime();
+  const endMs = Number(endTimeMillis) || now;
+
+  const aggregatePayload = {
+    aggregateBy: [
+      { dataTypeName: "com.google.step_count.delta" },
+      { dataTypeName: "com.google.calories.expended" },
+      { dataTypeName: "com.google.heart_rate.bpm" },
+      { dataTypeName: "com.google.heart_minutes" }
+    ],
+    bucketByTime: { durationMillis: 1200000 }, // Exactly 20-minute buckets
+    startTimeMillis: startMs,
+    endTimeMillis: endMs
+  };
+
+  try {
+    const googleRes = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(aggregatePayload)
+    });
+
+    if (!googleRes.ok) {
+      const errText = await googleRes.text();
+      console.error(`[Google Fit Sync Error] ${googleRes.status}: ${errText}`);
+      if (googleRes.status === 401) {
+        return res.status(401).json({
+          error: "Google OAuth access token expired or invalid. Please re-authenticate.",
+          code: "UNAUTHORIZED"
+        });
+      }
+      return res.status(googleRes.status).json({
+        error: `Google Fitness API returned error: ${googleRes.status}`,
+        details: errText
+      });
+    }
+
+    const fitData = await googleRes.json();
+    const buckets = fitData.bucket || [];
+
+    const realSamples: Array<{
+      timestamp: string;
+      unixMs: number;
+      heartRateBpm?: number;
+      hrvMs?: number;
+      stepsDelta?: number;
+      activeCaloriesDelta?: number;
+      spo2Percent?: number;
+      respiratoryRate?: number;
+      stressLevel?: number;
+    }> = [];
+
+    let totalSteps = 0;
+    let totalCalories = 0;
+    let hrSum = 0;
+    let hrCount = 0;
+    let minHr = 999;
+    let maxHr = 0;
+
+    for (const bucket of buckets) {
+      const bucketStartMs = Number(bucket.startTimeMillis);
+      const datasetList = bucket.dataset || [];
+
+      let bucketSteps = 0;
+      let bucketCalories = 0;
+      let bucketAvgHr: number | undefined = undefined;
+
+      for (const dataset of datasetList) {
+        const dataSourceId = dataset.dataSourceId || "";
+        const points = dataset.point || [];
+
+        for (const point of points) {
+          const values = point.value || [];
+          if (dataSourceId.includes("step_count") || dataSourceId.includes("derived:com.google.step_count")) {
+            const steps = values[0]?.intVal || 0;
+            bucketSteps += steps;
+          } else if (dataSourceId.includes("calories") || dataSourceId.includes("derived:com.google.calories")) {
+            const cal = values[0]?.fpVal || 0;
+            bucketCalories += Math.round(cal * 10) / 10;
+          } else if (dataSourceId.includes("heart_rate") || dataSourceId.includes("derived:com.google.heart_rate")) {
+            // [avg, max, min] or single val
+            const avg = values[0]?.fpVal;
+            const max = values[1]?.fpVal;
+            const min = values[2]?.fpVal;
+            if (avg) {
+              bucketAvgHr = Math.round(avg);
+              hrSum += avg;
+              hrCount++;
+              if (min && min < minHr) minHr = Math.round(min);
+              if (max && max > maxHr) maxHr = Math.round(max);
+            }
+          }
+        }
+      }
+
+      totalSteps += bucketSteps;
+      totalCalories += bucketCalories;
+
+      // Only add to samples if bucket falls within time and has data or represents timeline
+      realSamples.push({
+        timestamp: new Date(bucketStartMs).toISOString(),
+        unixMs: bucketStartMs,
+        heartRateBpm: bucketAvgHr,
+        stepsDelta: bucketSteps,
+        activeCaloriesDelta: Math.round(bucketCalories)
+      });
+    }
+
+    const avgHeartRate = hrCount > 0 ? Math.round(hrSum / hrCount) : 0;
+    const finalMinHr = minHr !== 999 ? minHr : (avgHeartRate > 0 ? avgHeartRate : 0);
+    const finalMaxHr = maxHr > 0 ? maxHr : (avgHeartRate > 0 ? avgHeartRate : 0);
+
+    const summary = {
+      totalSteps,
+      totalActiveCalories: Math.round(totalCalories),
+      avgHeartRate,
+      minHeartRate: finalMinHr,
+      maxHeartRate: finalMaxHr,
+      sampleCount: realSamples.length,
+      hasRealData: totalSteps > 0 || hrCount > 0
+    };
+
+    // Cache in server memory
+    serverWearableBufferMap.set(userId, {
+      userId,
+      provider: 'google_fit',
+      lastUpdated: new Date().toISOString(),
+      samples: realSamples.slice(-30)
+    });
+
+    console.log(`[Google Fit Sync Success] User ${userId}: ${totalSteps} steps, ${avgHeartRate} avg HR across ${realSamples.length} 20-min buckets.`);
+
+    res.json({
+      status: "ok",
+      provider: "google_fit",
+      syncedAt: new Date().toISOString(),
+      summary,
+      samples: realSamples
+    });
+  } catch (err: any) {
+    console.error("[Google Fit Sync Unexpected Exception]", err);
+    res.status(500).json({ error: "Failed to connect to Google Fitness API", details: err?.message });
+  }
 });
 
 // 2. Connect Provider

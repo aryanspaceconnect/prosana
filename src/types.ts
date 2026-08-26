@@ -302,7 +302,8 @@ export type WearableProviderId =
 export interface WearableProviderMeta {
   id: WearableProviderId;
   name: string;
-  category: 'primary' | 'secondary';
+  category: 'primary' | 'secondary' | 'coming_soon';
+  status: 'active' | 'coming_soon';
   badge?: string;
   icon: string;
   color: string;
@@ -318,6 +319,9 @@ export interface WearableConnectionState {
   lastSyncedAt: string;
   connectedAt: string;
   autoSyncIntervalMinutes: number; // default 20
+  accessToken?: string;
+  accountEmail?: string;
+  errorMessage?: string;
 }
 
 export interface WearableSample {
