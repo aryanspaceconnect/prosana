@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, syncUserProfile, subscribeFacialScans, getUserProfileFromFirestore } from './lib/firebase';
+import { auth, syncUserProfile, getUserProfileFromFirestore } from './lib/firebase';
 import { getStoredGuestId, initializeGuestTrialUser } from './lib/guestTrial';
-import { NavigationTab, UserProfile, UserSettings, FacialScanResult, DailyBriefing, PopUpNotification } from './types';
+import { NavigationTab, UserProfile, UserSettings, DailyBriefing, PopUpNotification } from './types';
 
 // Components
 import { Header } from './components/Header';
@@ -12,13 +12,10 @@ import { PopUpNotificationCard } from './components/PopUpNotificationCard';
 import { HomeDashboard } from './components/HomeDashboard';
 import { AIAgentChat } from './components/AIAgentChat';
 import { CalendarModal } from './components/CalendarModal';
-import { FacialScanModal } from './components/FacialScanModal';
 import { SettingsModal } from './components/SettingsModal';
 import { ReportsModal } from './components/ReportsModal';
 import { SanaVaultModal } from './components/SanaVaultModal';
-import { ScanHistoryModal } from './components/ScanHistoryModal';
 import { AuthScreen } from './components/AuthScreen';
-import { OnboardingScreen } from './components/OnboardingScreen';
 import { SanaLogoIcon } from './components/SanaLogoIcon';
 
 export default function App() {
@@ -27,20 +24,15 @@ export default function App() {
   const [authInitializing, setAuthInitializing] = useState(true);
   const [isNavMinimized, setIsNavMinimized] = useState(false);
   const [isExtendedMenuOpen, setIsExtendedMenuOpen] = useState(false);
-  const [forceOnboarding, setForceOnboarding] = useState<boolean>(false);
 
   // Modals
-  const [isScanOpen, setIsScanOpen] = useState(false);
-  const [scanMode, setScanMode] = useState<'ritual' | 'onboarding' | 'agent'>('ritual');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
   const [isVaultOpen, setIsVaultOpen] = useState(false);
-  const [isScanHistoryOpen, setIsScanHistoryOpen] = useState(false);
 
-  // Facial Scan & Daily Data
-  const [latestScan, setLatestScan] = useState<FacialScanResult | null>(null);
+  // Daily Data
   const [dailyBrief, setDailyBrief] = useState<DailyBriefing>({
-    greeting: 'Morning, sunshine',
+    greeting: 'Welcome back',
     temperature: '23°C',
     weatherCondition: 'Partly Sunny',
     uvIndex: 6,
@@ -48,9 +40,9 @@ export default function App() {
     humidity: '58%',
     waterTargetLiters: '2.4L',
     primaryReminders: [
-      'Broad spectrum sunscreen application',
+      'Daily wellness check-in',
       'Hydration target: 2.4L',
-      'Evening facial barrier check at 9:00 PM'
+      'Evening health routine check at 9:00 PM'
     ]
   });
 
@@ -59,21 +51,13 @@ export default function App() {
 
   // Listen for custom trigger events from agent / approval cards
   useEffect(() => {
-    const handleOpenScan = (e: any) => {
-      if (e.detail?.initiatedBy === 'agent') {
-        setScanMode('agent');
-      } else {
-        setScanMode('ritual');
-      }
-      setIsScanOpen(true);
-    };
     const handleOpenChatSession = () => setActiveTab('agent');
 
-    window.addEventListener('sana:open_facial_scan', handleOpenScan);
+    window.addEventListener('prosana:open_chat_session', handleOpenChatSession);
     window.addEventListener('sana:open_chat_session', handleOpenChatSession);
 
     return () => {
-      window.removeEventListener('sana:open_facial_scan', handleOpenScan);
+      window.removeEventListener('prosana:open_chat_session', handleOpenChatSession);
       window.removeEventListener('sana:open_chat_session', handleOpenChatSession);
     };
   }, []);
@@ -101,7 +85,7 @@ export default function App() {
 
           let localCacheSettings: any = {};
           try {
-            const rawCache = localStorage.getItem('sana_user_settings_cache');
+            const rawCache = localStorage.getItem('prosana_user_settings_cache') || localStorage.getItem('sana_user_settings_cache');
             if (rawCache) localCacheSettings = JSON.parse(rawCache);
           } catch (cacheErr) {
             console.warn("Could not read local settings cache:", cacheErr);
@@ -113,7 +97,7 @@ export default function App() {
 
           const mergedSettings: UserSettings = {
             temperatureUnit: 'C',
-            scanNotificationTime: '00:00',
+            scanNotificationTime: '09:00',
             scanReminderEnabled: true,
             theme: 'light',
             ...localCacheSettings,
@@ -125,8 +109,8 @@ export default function App() {
 
           const profile: UserProfile = {
             uid: user.uid,
-            displayName: dbUserData?.displayName || user.displayName || (user.email ? user.email.split('@')[0] : 'SANA User'),
-            email: dbUserData?.email || user.email || 'guest@sana.app',
+            displayName: dbUserData?.displayName || user.displayName || (user.email ? user.email.split('@')[0] : 'prosana User'),
+            email: dbUserData?.email || user.email || 'guest@prosana.app',
             photoURL: dbUserData?.photoURL || user.photoURL || undefined,
             isAnonymous: user.isAnonymous,
             locationName: resolvedLocationName,
@@ -135,14 +119,6 @@ export default function App() {
           };
           if (isMounted) {
             setUserProfile(profile);
-
-            // If onboarding has not been completed, trigger onboarding
-            const hasCompletedOnboarding = mergedSettings.onboardingCompleted === true;
-            if (!hasCompletedOnboarding) {
-              setForceOnboarding(true);
-            } else {
-              setForceOnboarding(false);
-            }
           }
 
           try {
@@ -158,18 +134,15 @@ export default function App() {
                 const guestProfile = await initializeGuestTrialUser();
                 if (isMounted) {
                   setUserProfile(guestProfile);
-                  setForceOnboarding(false);
                 }
               } catch (guestErr) {
                 console.warn("Could not restore guest trial user:", guestErr);
                 if (isMounted) {
                   setUserProfile(null);
-                  setForceOnboarding(false);
                 }
               }
             } else {
               setUserProfile(null);
-              setForceOnboarding(false);
             }
           }
         }
@@ -193,7 +166,7 @@ export default function App() {
   // Dynamic browser coords & client location acquisition with local storage caching
   const [appBrowserCoords, setAppBrowserCoords] = useState<{ lat?: number; lon?: number; locationName?: string }>(() => {
     try {
-      const cached = localStorage.getItem('sana_cached_location');
+      const cached = localStorage.getItem('prosana_cached_location') || localStorage.getItem('sana_cached_location');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (typeof parsed.lat === 'number' && typeof parsed.lon === 'number') {
@@ -213,7 +186,7 @@ export default function App() {
 
     const saveLocationCache = (lat: number, lon: number, locationName?: string) => {
       try {
-        localStorage.setItem('sana_cached_location', JSON.stringify({
+        localStorage.setItem('prosana_cached_location', JSON.stringify({
           lat,
           lon,
           locationName,
@@ -303,90 +276,28 @@ export default function App() {
     appBrowserCoords.locationName
   ]);
 
-  // Subscribe to Facial Scans in Firestore & Auto-Check Today's Scan Completion
-  useEffect(() => {
-    if (!userProfile?.uid) return;
-    const unsub = subscribeFacialScans(userProfile.uid, (scans) => {
-      if (scans.length > 0) {
-        setLatestScan(scans[0] as FacialScanResult);
-
-        // Check if any scan in Firestore database was completed TODAY
-        const todayStr = new Date().toISOString().split('T')[0];
-        const hasScanToday = scans.some((s: any) => {
-          if (s.scanDate === todayStr) return true;
-          if (s.timestamp) {
-            let scanDateStr = '';
-            if (typeof s.timestamp === 'string') {
-              scanDateStr = s.timestamp.split('T')[0];
-            } else if (s.timestamp.toDate && typeof s.timestamp.toDate === 'function') {
-              scanDateStr = s.timestamp.toDate().toISOString().split('T')[0];
-            } else if (s.timestamp.seconds) {
-              scanDateStr = new Date(s.timestamp.seconds * 1000).toISOString().split('T')[0];
-            }
-            if (scanDateStr === todayStr) return true;
-          }
-          return false;
-        });
-
-        if (hasScanToday) {
-          // Today's scan is verified in Firestore database! Mark scan completed for today.
-          setUserProfile(prev => {
-            if (!prev) return null;
-            if (prev.settings?.lastCompletedScanDate === todayStr) return prev;
-            return {
-              ...prev,
-              settings: {
-                ...prev.settings,
-                lastCompletedScanDate: todayStr
-              }
-            };
-          });
-          // Immediately dismiss any active daily scan notification
-          setNotification(prev => (prev?.type === 'facial_scan' ? null : prev));
-        }
-      }
-    });
-    return () => unsub();
-  }, [userProfile?.uid]);
-
-  // Check Daily Facial Scan Pop-Up Trigger Logic against Firestore Cached State
+  // Daily Health Check-in Pop-Up Trigger Logic
   useEffect(() => {
     if (!userProfile) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
     const settings: UserSettings = userProfile.settings || {
       temperatureUnit: 'C',
-      scanNotificationTime: '00:00',
+      scanNotificationTime: '09:00',
       scanReminderEnabled: true,
       theme: 'light'
     };
     const reminderEnabled = settings.scanReminderEnabled !== false;
     const lastCompleted = settings.lastCompletedScanDate;
 
-    // 1. If today's scan is already cached as completed in database, NEVER show reminder popup
+    // 1. If today's check-in was already completed, don't show reminder popup
     if (lastCompleted === todayStr) {
-      setNotification(prev => (prev?.type === 'facial_scan' ? null : prev));
+      setNotification(prev => (prev?.type === 'facial_scan' || prev?.type === 'agent_approval' ? null : prev));
       return;
     }
 
-    // 2. Check if latestScan in state is from today
-    if (latestScan) {
-      let scanDateStr = '';
-      if (typeof latestScan.timestamp === 'string') {
-        scanDateStr = latestScan.timestamp.split('T')[0];
-      } else if ((latestScan as any).timestamp?.toDate) {
-        scanDateStr = (latestScan as any).timestamp.toDate().toISOString().split('T')[0];
-      } else if ((latestScan as any).timestamp?.seconds) {
-        scanDateStr = new Date((latestScan as any).timestamp.seconds * 1000).toISOString().split('T')[0];
-      }
-      if (scanDateStr === todayStr) {
-        setNotification(prev => (prev?.type === 'facial_scan' ? null : prev));
-        return;
-      }
-    }
-
-    // 3. Check session dismissal
-    const sessionDismissed = sessionStorage.getItem(`sana_popup_dismissed_${todayStr}`);
+    // 2. Check session dismissal
+    const sessionDismissed = sessionStorage.getItem(`prosana_popup_dismissed_${todayStr}`) || sessionStorage.getItem(`sana_popup_dismissed_${todayStr}`);
     if (sessionDismissed === 'true') {
       return;
     }
@@ -394,21 +305,21 @@ export default function App() {
     if (reminderEnabled) {
       const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const targetTimeStr = settings.scanNotificationTime || '00:00';
+      const targetTimeStr = settings.scanNotificationTime || '09:00';
       const [targetH, targetM] = targetTimeStr.split(':').map(Number);
       const targetMinutes = (targetH || 0) * 60 + (targetM || 0);
 
       if (currentMinutes >= targetMinutes) {
         setNotification({
-          id: `daily_scan_${todayStr}`,
-          type: 'facial_scan',
-          title: 'Daily Facial Scan Due',
-          subtitle: 'Perform your daily AI facial analysis to sync skin barrier & hydration metrics.',
+          id: `daily_checkin_${todayStr}`,
+          type: 'agent_approval',
+          title: 'Daily Health Check-in',
+          subtitle: 'Take a moment with prosana to log your wellness progress & review your daily routine.',
           timeAgo: targetTimeStr === '00:00' ? '12:00 AM' : `${targetTimeStr} Check`,
-          actionText: 'Start Daily Scan',
-          iconType: 'scan',
-          badgeText: 'DAILY FACIAL SCAN',
-          actionTarget: 'scan',
+          actionText: 'Start Check-in',
+          iconType: 'sparkles',
+          badgeText: 'DAILY CHECK-IN',
+          actionTarget: 'agent',
           autoTriggered: true
         });
       }
@@ -417,14 +328,13 @@ export default function App() {
     userProfile?.settings?.scanReminderEnabled,
     userProfile?.settings?.scanNotificationTime,
     userProfile?.settings?.lastCompletedScanDate,
-    userProfile?.uid,
-    latestScan
+    userProfile?.uid
   ]);
 
   const handleUpdateSettings = async (newSettings: UserSettings) => {
     if (userProfile) {
       try {
-        localStorage.setItem('sana_user_settings_cache', JSON.stringify(newSettings));
+        localStorage.setItem('prosana_user_settings_cache', JSON.stringify(newSettings));
       } catch (cacheErr) {
         console.warn("Could not cache settings to localStorage:", cacheErr);
       }
@@ -446,8 +356,8 @@ export default function App() {
         <div className="mb-3 animate-pulse">
           <SanaLogoIcon size={38} color="#121316" />
         </div>
-        <h2 className="text-xl font-bold tracking-tight text-[#121316] lowercase">sana</h2>
-        <p className="text-xs text-slate-400 mt-1">Initializing skin & health intelligence...</p>
+        <h2 className="text-xl font-bold tracking-tight text-[#121316] lowercase">prosana</h2>
+        <p className="text-xs text-slate-400 mt-1">Initializing health companion intelligence...</p>
       </div>
     );
   }
@@ -455,29 +365,10 @@ export default function App() {
   if (!userProfile) {
     return (
       <AuthScreen
-        onAuthSuccess={(profile, isNewUser) => {
+        onAuthSuccess={(profile) => {
           setUserProfile(profile);
-          if (isNewUser) {
-            setForceOnboarding(true);
-          } else {
-            setForceOnboarding(false);
-            setActiveTab('home');
-          }
-        }}
-      />
-    );
-  }
-
-  if (forceOnboarding || userProfile.settings?.onboardingCompleted !== true) {
-    return (
-      <OnboardingScreen
-        userProfile={userProfile}
-        onCompleteOnboarding={(updatedProfile) => {
-          setUserProfile(updatedProfile);
-          setForceOnboarding(false);
           setActiveTab('home');
         }}
-        onOpenScan={() => setIsScanOpen(true)}
       />
     );
   }
@@ -488,7 +379,7 @@ export default function App() {
       <Header
         userProfile={userProfile}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenScan={() => setIsScanOpen(true)}
+        onOpenScan={() => setActiveTab('agent')}
       />
 
       {/* Main Screen Views */}
@@ -496,9 +387,8 @@ export default function App() {
         {activeTab === 'home' && (
           <HomeDashboard
             userProfile={userProfile}
-            latestScan={latestScan}
             dailyBrief={dailyBrief}
-            onOpenScan={() => setIsScanOpen(true)}
+            onOpenScan={() => setActiveTab('agent')}
             onOpenAgent={() => setActiveTab('agent')}
             onOpenCalendar={() => setActiveTab('calendar')}
             onOpenSettings={() => setIsSettingsOpen(true)}
@@ -516,7 +406,7 @@ export default function App() {
         {activeTab === 'calendar' && (
           <CalendarModal
             userProfile={userProfile}
-            onOpenScan={() => setIsScanOpen(true)}
+            onOpenScan={() => setActiveTab('agent')}
           />
         )}
       </div>
@@ -531,11 +421,11 @@ export default function App() {
         isMinimized={isNavMinimized}
         onRestorePill={() => setIsNavMinimized(false)}
         userProfile={userProfile}
-        onOpenScan={() => setIsScanOpen(true)}
+        onOpenScan={() => setActiveTab('agent')}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenReports={() => setIsReportsOpen(true)}
         onOpenVault={() => setIsVaultOpen(true)}
-        onOpenScanHistory={() => setIsScanHistoryOpen(true)}
+        onOpenScanHistory={() => setIsReportsOpen(true)}
         theme={userProfile?.settings?.theme || 'light'}
         onThemeChange={(newTheme) => {
           if (userProfile) {
@@ -552,12 +442,12 @@ export default function App() {
         isOpen={isExtendedMenuOpen}
         onClose={() => setIsExtendedMenuOpen(false)}
         userProfile={userProfile}
-        onOpenScan={() => setIsScanOpen(true)}
+        onOpenScan={() => setActiveTab('agent')}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenReports={() => setIsReportsOpen(true)}
         onOpenRoutine={() => setActiveTab('home')}
         onOpenVault={() => setIsVaultOpen(true)}
-        onOpenScanHistory={() => setIsScanHistoryOpen(true)}
+        onOpenScanHistory={() => setIsReportsOpen(true)}
       />
 
       {/* PopUp Notification Card (Daily Check-in) */}
@@ -565,7 +455,7 @@ export default function App() {
         notification={notification}
         onDismiss={() => {
           const todayStr = new Date().toISOString().split('T')[0];
-          sessionStorage.setItem(`sana_popup_dismissed_${todayStr}`, 'true');
+          sessionStorage.setItem(`prosana_popup_dismissed_${todayStr}`, 'true');
           setNotification(null);
         }}
         onAction={(notif) => {
@@ -576,34 +466,9 @@ export default function App() {
             setIsReportsOpen(true);
           } else if (notif.actionTarget === 'vault') {
             setIsVaultOpen(true);
-          } else if (notif.actionTarget === 'agent') {
-            setActiveTab('agent');
           } else {
-            setIsScanOpen(true);
+            setActiveTab('agent');
           }
-        }}
-      />
-
-      {/* Facial Skin Scanner Modal */}
-      <FacialScanModal
-        isOpen={isScanOpen}
-        mode={scanMode}
-        onClose={() => setIsScanOpen(false)}
-        userProfile={userProfile}
-        onScanComplete={(result) => {
-          setLatestScan(result);
-          setNotification(null);
-          const todayStr = new Date().toISOString().split('T')[0];
-          const updatedSettings = {
-            ...(userProfile?.settings || {
-              temperatureUnit: 'C',
-              scanNotificationTime: '00:00',
-              scanReminderEnabled: true,
-              theme: 'light'
-            }),
-            lastCompletedScanDate: todayStr
-          };
-          handleUpdateSettings(updatedSettings);
         }}
       />
 
@@ -614,10 +479,6 @@ export default function App() {
         userProfile={userProfile}
         onUpdateSettings={handleUpdateSettings}
         onTestTriggerPopup={(popup) => setNotification(popup)}
-        onRerunOnboarding={() => {
-          setIsSettingsOpen(false);
-          setForceOnboarding(true);
-        }}
       />
 
       {/* Reports Modal */}
@@ -627,18 +488,11 @@ export default function App() {
         userProfile={userProfile}
       />
 
-      {/* Sana Agent Vault Modal */}
+      {/* prosana Agent Vault Modal */}
       <SanaVaultModal
         isOpen={isVaultOpen}
         onClose={() => setIsVaultOpen(false)}
         userId={userProfile?.uid || 'guest_user'}
-      />
-
-      {/* Scan History Modal */}
-      <ScanHistoryModal
-        isOpen={isScanHistoryOpen}
-        onClose={() => setIsScanHistoryOpen(false)}
-        userProfile={userProfile}
       />
     </div>
   );

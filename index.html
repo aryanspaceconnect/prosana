@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>SANA — AI Skin & Wellness Companion</title>
+    <title>prosana — AI Health Companion</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..700;1,400..700&family=Newsreader:ital,opsz,wght@0,6..72,400..600;1,6..72,400..600&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
@@ -11,17 +11,6 @@
   </head>
   <body class="bg-[#f8f9fa] text-[#121316] antialiased select-none font-sans overflow-hidden">
     <div id="root"></div>
-    <div id="YMK-module" style="display:none;"></div>
-    <script>
-      window.YMKAsyncInit = function() {
-        if (window.YMK) {
-          window.YMK.addEventListener('loaded', function() {
-            console.log('[YMK Camera Kit] Module loaded successfully');
-          });
-        }
-      };
-    </script>
-    <script src="https://plugins-media.makeupar.com/v2.5-camera-kit/sdk.js" async></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

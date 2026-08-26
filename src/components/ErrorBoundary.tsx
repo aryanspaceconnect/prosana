@@ -24,7 +24,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('SANA Uncaught Application Error:', error, errorInfo);
+    console.error('prosana Uncaught Application Error:', error, errorInfo);
     this.setState({ error, errorInfo });
   }
 
@@ -58,7 +58,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong while rendering
           </h2>
           <p className="text-xs text-slate-500 max-w-sm mb-6 leading-relaxed">
-            SANA encountered a client-side execution interruption. Your persisted data in Firestore remains completely safe.
+            prosana encountered a client-side execution interruption. Your persisted data in Firestore remains completely safe.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full max-w-xs mb-4">

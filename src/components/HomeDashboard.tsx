@@ -6,9 +6,9 @@ import { pickHomeGreeting, GreetingConfig } from '../lib/homeGreetings';
 
 interface HomeDashboardProps {
   userProfile: UserProfile | null;
-  latestScan: FacialScanResult | null;
+  latestScan?: FacialScanResult | null;
   dailyBrief: DailyBriefing;
-  onOpenScan: () => void;
+  onOpenScan?: () => void;
   onOpenAgent: () => void;
   onOpenCalendar: () => void;
   onOpenSettings?: () => void;

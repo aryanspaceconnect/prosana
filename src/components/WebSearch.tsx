@@ -18,7 +18,7 @@ const DEFAULT_QUERY = "Skin barrier repair & active ingredient compatibility";
 const DEFAULT_SITES: SiteItem[] = [
   { title: "Dermatology Research & Barrier Care", url: "ncbi.nlm.nih.gov/pmc/articles/skin-barrier", discover: 400, finish: 1800 },
   { title: "Active Ingredients & Clinical Guidelines", url: "dermnetnz.org/topics/skincare-actives", discover: 1200, finish: 3200 },
-  { title: "SANA Clinical Science & Formulation Index", url: "sana.ai/research/formulation-safety", discover: 2200, finish: 4400 },
+  { title: "prosana Clinical Science & Health Formulation Index", url: "prosana.ai/research/formulation-safety", discover: 2200, finish: 4400 },
 ];
 
 // Six meridians, phase-offset by 1/6 of the cycle, read as one rotating sphere.

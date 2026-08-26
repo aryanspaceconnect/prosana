@@ -438,10 +438,10 @@ export const ApprovalCard: React.FC<ApprovalCardProps> = ({
 
     if (proposal) {
       if (proposal.actionType === 'TRIGGER_FACIAL_SCAN' || proposal.actionTarget === 'scan') {
-        window.dispatchEvent(new CustomEvent('sana:open_facial_scan', { detail: { initiatedBy: 'agent' } }));
+        window.dispatchEvent(new CustomEvent('prosana:open_chat_session', { detail: { initiatedBy: 'agent' } }));
         setStatus('approved');
-        setResultMessage('Facial scan camera launched successfully!');
-        if (onExecuted) onExecuted({ success: true, message: 'Facial scan camera launched.' });
+        setResultMessage('prosana wellness check-in opened!');
+        if (onExecuted) onExecuted({ success: true, message: 'prosana check-in opened.' });
         return;
       }
 

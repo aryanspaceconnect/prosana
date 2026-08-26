@@ -11,15 +11,9 @@ import { executeWebSearch } from "./src/agent/searchService.js";
 import { performExaSearch, performExaContents, performExaAnswer } from "./src/agent/exaSearchService.js";
 import { mcpManager } from "./src/agent/mcp/McpManager.js";
 import { getBaselineWeatherData, searchLocations, reverseGeocode } from "./src/agent/services/WeatherAwarenessEngine.js";
-import { analyzeSkinWithPerfectCorp } from "./src/agent/services/perfectCorpService.js";
-import { SkinContextManager } from "./src/agent/services/skinContextManager.js";
-import { SkinTrendGraphEngine } from "./src/agent/services/skinTrendGraph.js";
-import { saveFacialScan, updateFacialScanReport, getPastScansForUser, saveChatMessage } from "./src/lib/firebase.js";
-import { evaluateGuestScanQuota } from "./src/lib/guestTrial.js";
+import { saveChatMessage } from "./src/lib/firebase.js";
 import { getUniversalNotepad } from "./src/agent/universalNotepad.js";
-import { saveSkinScanToVault } from "./src/agent/agentVault.js";
 import { getOrGenerateCompanionSignals } from "./src/agent/services/companionSignalsService.js";
-import { POST_SCAN_REPORT_SYSTEM_PROMPT, ONBOARDING_REPORT_SYSTEM_PROMPT } from "./src/agent/prompts/scanReportPrompt.js";
 
 dotenv.config();
 
@@ -41,7 +35,7 @@ function getGeminiClient() {
 
 // Health Check
 app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "SANA AI Backend", timestamp: new Date().toISOString() });
+  res.json({ status: "ok", service: "prosana AI Backend", timestamp: new Date().toISOString() });
 });
 
 // Intent Analysis and Dynamic Thinking Mode Helper
@@ -160,7 +154,7 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const userCtx = getUserProfileContextString(userProfile);
-    const systemInstruction = `You are SANA, a sophisticated AI skin health & wellness thinking agent.
+    const systemInstruction = `You are prosana, a sophisticated AI skin health & wellness thinking companion.
 User Name: ${userProfile?.settings?.preferredName || userProfile?.displayName || 'User'}.
 ${userCtx}
 Selected Agent Thinking Strategy: ${thinkingAnalysis.thinkingMode.toUpperCase()} THINKING MODE (Calculated Complexity: ${thinkingAnalysis.complexityScore}/10).
@@ -169,7 +163,7 @@ Applied Agent Swift Rules: ${thinkingAnalysis.appliedRules.join("; ")}.
 
 Instructions:
 ${thinkingAnalysis.thinkingMode === 'hard'
-  ? "Deliver a deep, thorough, clinical-grade skin health analysis. Break down active ingredients, skin barrier protection rules, and step-by-step guidance clearly with expert depth."
+  ? "Deliver a deep, thorough, health and skin analysis. Break down active ingredients, skin barrier protection rules, and step-by-step guidance clearly with expert depth."
   : "Deliver a concise, clear, and direct friendly answer. Keep it approachable and easy to digest."
 }
 Always address the user warmly using their Preferred Name if available. Never use emojis. Maintain an elegant, warm, empathetic tone.`;
@@ -206,7 +200,7 @@ Always address the user warmly using their Preferred Name if available. Never us
 
     return res.json({
       role: "model",
-      text: responseText || "I'm here to support your skin wellness routine. How can I assist you today?",
+      text: responseText || "I'm here to support your skin and health wellness. How can I assist you today?",
       thinkingMeta: {
         ...thinkingAnalysis,
         reasoningSteps: finalReasoningSteps,
@@ -243,7 +237,7 @@ app.post("/api/chat/stream", async (req, res) => {
     }));
 
     const userCtx = getUserProfileContextString(userProfile);
-    const systemInstruction = `You are SANA, a sophisticated AI skin health & wellness thinking agent.
+    const systemInstruction = `You are prosana, a sophisticated AI skin health & wellness thinking companion.
 User Name: ${userProfile?.settings?.preferredName || userProfile?.displayName || 'User'}.
 ${userCtx}
 Selected Agent Thinking Strategy: ${thinkingAnalysis.thinkingMode.toUpperCase()} THINKING MODE (Calculated Complexity: ${thinkingAnalysis.complexityScore}/10).
@@ -296,8 +290,8 @@ Always address the user warmly using their Preferred Name if available. Never us
   }
 });
 
-// SANA Multi-step Agent Protocol Endpoint
-app.post("/api/sana", async (req, res) => {
+// prosana Multi-step Agent Protocol Endpoint Handler
+const handleAgentCall = async (req: express.Request, res: express.Response) => {
   try {
     const { userId = "guest_user", message, sessionId, history, attachments } = req.body;
     if (!message || typeof message !== "string") {
@@ -321,9 +315,9 @@ app.post("/api/sana", async (req, res) => {
       toolResults: agentResult.toolResults
     });
   } catch (error: any) {
-    console.error("Error in /api/sana:", error);
+    console.error("Error in agent endpoint:", error);
     return res.json({
-      text: "I am SANA, your skin health agent. I encountered a transient processing error. For your skin safety: 1. Always apply broad-spectrum SPF 50 daily. 2. Keep active ingredients balanced. 3. Hydrate with ceramide-based moistures.",
+      text: "I am prosana, your health & skin companion. I encountered a transient processing error. For your skin safety: 1. Always apply broad-spectrum SPF 50 daily. 2. Keep active ingredients balanced. 3. Hydrate with ceramide-based moistures.",
       sessionId: req.body?.sessionId || `session_${Date.now()}`,
       passOnTrace: [
         {
@@ -336,7 +330,10 @@ app.post("/api/sana", async (req, res) => {
       toolResults: []
     });
   }
-});
+};
+
+app.post("/api/prosana", handleAgentCall);
+app.post("/api/sana", handleAgentCall);
 
 // Secure Web Search Proxy Endpoint
 app.post("/api/search", async (req, res) => {
@@ -561,7 +558,7 @@ app.get("/api/mcp/logs", (_req, res) => {
   }
 });
 
-app.post("/api/sana/execute", async (req, res) => {
+const handleExecuteAction = async (req: express.Request, res: express.Response) => {
   try {
     const { userId = "guest_user", proposal } = req.body;
     if (!proposal || !proposal.actionId || !proposal.actionType) {
@@ -571,306 +568,16 @@ app.post("/api/sana/execute", async (req, res) => {
     const execResult = await executeActionProposal(userId, proposal);
     return res.json(execResult);
   } catch (error: any) {
-    console.error("Error in /api/sana/execute:", error);
+    console.error("Error in action execution:", error);
     return res.status(500).json({
       error: "Failed to execute action proposal",
       details: error?.message || String(error)
     });
   }
-});
+};
 
-// Check Guest Scan Quota Status
-app.get("/api/guest-quota/:userId", async (req, res) => {
-  try {
-    const { userId } = req.params;
-    let pastScansList: any[] = [];
-    try {
-      pastScansList = await getPastScansForUser(userId, 10);
-    } catch {}
-    const quota = evaluateGuestScanQuota(pastScansList);
-    return res.json({ success: true, quota });
-  } catch (error: any) {
-    console.error("Error in GET /api/guest-quota/:userId:", error);
-    return res.status(500).json({ error: "Failed to check guest quota", details: error?.message || String(error) });
-  }
-});
-
-// Facial Scan Analysis Endpoint - Complete Perfect Corp API & Context Manager Workflow
-app.post("/api/facial-scan", async (req, res) => {
-  try {
-    const { imageBase64, userId = "guest_user", pastScans = [], faceBox, scanType = "daily_scan", scanId: reqScanId, responseStyle = "professional_medical", dailyContext, onboardingResponses } = req.body;
-    if (!imageBase64) {
-      return res.status(400).json({ error: "Missing image data" });
-    }
-
-    // GUEST TRIAL QUOTA ENFORCEMENT (2 scans total across 2 days, max 1 scan per day)
-    const isGuest = userId.startsWith('guest_') || userId === 'guest_user' || req.body.isGuestTrial;
-    if (isGuest) {
-      let quotaScansList: any[] = [];
-      try {
-        quotaScansList = await getPastScansForUser(userId, 10);
-      } catch (e) {
-        console.warn("[FacialScanQuota] Quota fetch note:", e);
-      }
-
-      // If client supplied pastScans, merge for maximum protection
-      const combinedScans = [...quotaScansList];
-      if (Array.isArray(pastScans)) {
-        pastScans.forEach((ps: any) => {
-          if (ps && !combinedScans.some((cs: any) => (cs.scanId || cs.id) === (ps.scanId || ps.id))) {
-            combinedScans.push(ps);
-          }
-        });
-      }
-
-      const quotaCheck = evaluateGuestScanQuota(combinedScans);
-      if (!quotaCheck.allowed) {
-        console.warn(`[FacialScanPipeline] Blocked guest scan (${quotaCheck.status}) for ${userId}: ${quotaCheck.message}`);
-        return res.status(403).json({
-          error: quotaCheck.message,
-          quotaExceeded: true,
-          quotaStatus: quotaCheck.status,
-          totalScansDone: quotaCheck.totalScansDone,
-          maxScans: quotaCheck.maxScans,
-          daysLimit: quotaCheck.daysLimit,
-          scansRemaining: quotaCheck.scansRemaining
-        });
-      }
-    }
-
-    const now = new Date();
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timeStampStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
-    const scanTypeClean = scanType === 'intermediate_scan' ? 'intermediate_scan' : scanType === 'onboarding_scan' ? 'onboarding_scan' : 'daily_scan';
-    const formattedScanId = reqScanId || `${scanTypeClean}_${timeStampStr}`;
-    const reportSessionId = `session_scan_report_${timeStampStr}`;
-
-    console.log(`[FacialScanPipeline] Starting scan workflow (${scanTypeClean}: ${formattedScanId}) for user: ${userId}`);
-
-    // STEP 1: Perfect Corp API Analysis Path (S2S)
-    const rawPerfectCorpOutput = await analyzeSkinWithPerfectCorp(imageBase64, userId, { faceBox });
-
-    // Construct concern images dictionary and masks list
-    const concernImages: Record<string, any> = {};
-    const masks: any[] = [];
-    const concernsMap = rawPerfectCorpOutput.scoreInfo?.concerns || {};
-
-    Object.keys(concernsMap).forEach(key => {
-      const c = concernsMap[key];
-      const maskUrl = c.mask_urls?.[0] || (c as any).mask_url || null;
-      const maskObj = {
-        concernName: key,
-        tag: key.toLowerCase(),
-        label: key.replace(/_/g, ' ').toUpperCase(),
-        score: c.ui_score ?? c.raw_score ?? 85,
-        mask_url: maskUrl,
-        description: `${key.replace(/_/g, ' ')} detected overlay`
-      };
-      concernImages[key] = maskObj;
-      masks.push(maskObj);
-    });
-
-    // Score snapshot
-    const scoreSnapshot = {
-      overall: rawPerfectCorpOutput.scoreInfo?.all || rawPerfectCorpOutput.rawMetrics?.overallScore || 85,
-      skinAge: rawPerfectCorpOutput.rawMetrics?.skinAge || 25,
-      moisture: rawPerfectCorpOutput.rawMetrics?.moistureScore || 85,
-      barrierRedness: rawPerfectCorpOutput.rawMetrics?.barrierRednessScore || 88,
-      acneBlemish: rawPerfectCorpOutput.rawMetrics?.acneBlemishScore || 90,
-      pores: rawPerfectCorpOutput.rawMetrics?.poresScore || 82,
-      darkCircles: rawPerfectCorpOutput.rawMetrics?.darkCirclesScore || 80,
-      firmness: rawPerfectCorpOutput.rawMetrics?.firmnessScore || 86
-    };
-
-    // STEP 2: Save Checkpoint to Firestore (facial_scans)
-    let savedDocId: string | null = null;
-    try {
-      savedDocId = await saveFacialScan(userId, {
-        scanId: formattedScanId,
-        scanType: scanTypeClean,
-        hydrationScore: rawPerfectCorpOutput.rawMetrics?.moistureScore || 85,
-        barrierScore: rawPerfectCorpOutput.rawMetrics?.barrierRednessScore || 88,
-        clarityScore: rawPerfectCorpOutput.rawMetrics?.acneBlemishScore || 90,
-        rawMetrics: rawPerfectCorpOutput.rawMetrics,
-        scoreInfo: rawPerfectCorpOutput.scoreInfo,
-        scoreSnapshot,
-        annotatedRegions: rawPerfectCorpOutput.annotatedRegions,
-        concernImages,
-        masks,
-        capturedImage: imageBase64,
-        provider: rawPerfectCorpOutput.provider,
-        rawPerfectCorpOutput,
-        reportStatus: 'running',
-        reportSessionId,
-        reportText: null,
-        timestamp: now.toISOString()
-      });
-      console.log(`[FacialScanPipeline] Checkpoint saved with docId: ${savedDocId}`);
-    } catch (dbErr) {
-      console.warn("[FacialScanPipeline] DB save warning:", dbErr);
-    }
-
-    // STEP 3: Save to Agent Vault Folder
-    try {
-      await saveSkinScanToVault(userId, {
-        scanId: formattedScanId,
-        scanType: scanTypeClean,
-        timestamp: now.toISOString(),
-        rawMetrics: rawPerfectCorpOutput.rawMetrics,
-        scoreInfo: rawPerfectCorpOutput.scoreInfo,
-        annotatedRegions: rawPerfectCorpOutput.annotatedRegions,
-        s2sStepLogs: rawPerfectCorpOutput.s2sStepLogs,
-        rawResponseLog: rawPerfectCorpOutput.rawResponseLog,
-        rawPerfectCorpOutput,
-        capturedImage: imageBase64 ? imageBase64.slice(0, 500) + '...' : undefined,
-        concernImages
-      });
-    } catch (vaultErr) {
-      console.warn("[FacialScanPipeline] Agent Vault save warning:", vaultErr);
-    }
-
-    // STEP 4: Synchronous Genuine Agent Scan Report Generation
-    let finalReportText: string | null = null;
-    let finalReportStatus: string = 'running';
-
-    try {
-      console.log(`[ScanReport] Generating inline agent report for scan ${formattedScanId}...`);
-      
-      // Fetch context cleanly, handling Firestore availability gracefully
-      let pastScansList: any[] = [];
-      try {
-        pastScansList = await getPastScansForUser(userId, 15);
-      } catch (e) {
-        console.warn("[ScanReport] Note: past scans read skipped or offline:", e);
-      }
-
-      let universalNotepad = "";
-      try {
-        universalNotepad = await getUniversalNotepad(userId);
-      } catch (e) {
-        console.warn("[ScanReport] Note: universal notepad read skipped or offline:", e);
-      }
-
-      // Build text-only context pack
-      const contextPack = SkinContextManager.buildAgentScanContext(
-        rawPerfectCorpOutput,
-        { integrityStatus: 'VALID', passedChecks: ['Format Validated', 'Metric Ranges Passed'], integrityErrors: [], schemaVerified: true, directUploadFlag: false, validatedAt: new Date().toISOString() },
-        pastScansList,
-        [],
-        universalNotepad,
-        responseStyle
-      );
-
-      const dailyContextBlock = dailyContext ? `
-### USER DAILY EXPOSOME & LIFESTYLE SURVEY DATA
-- Gender Profile Mode: ${dailyContext.gender || 'General'}
-- Sleep & Rest Quality: ${dailyContext.sleep || 'Not provided'}
-- Hydration & Dietary Intake: ${dailyContext.hydration || 'Not provided'}
-- Sun & Exposome Exposure: ${dailyContext.exposure || 'Not provided'}
-- Gender/Routine Specific Factor: ${dailyContext.genderFactor || 'Not provided'}
-${dailyContext.optionalNote ? `- User Observation Note: "${dailyContext.optionalNote}"` : ''}
-` : '';
-
-      const isOnboarding = scanTypeClean === 'onboarding_scan' || scanType === 'onboarding' || (onboardingResponses && Array.isArray(onboardingResponses) && onboardingResponses.length > 0);
-      const selectedPrompt = isOnboarding ? ONBOARDING_REPORT_SYSTEM_PROMPT : POST_SCAN_REPORT_SYSTEM_PROMPT;
-
-      const onboardingBlock = (onboardingResponses && Array.isArray(onboardingResponses) && onboardingResponses.length > 0) ? `
-### ONBOARDING SURVEY QUESTIONS & USER ANSWERS (TAGGED CONTEXT)
-${onboardingResponses.map((item: any) => `- [QUESTION: ${item.question || item.q}] -> [USER ANSWER: ${item.answer || item.a}]`).join('\n')}
-` : '';
-
-      const agentPrompt = `${contextPack}
-${dailyContextBlock}
-${onboardingBlock}
-
-TASK: Generate a post-scan skin report according to your system prompt rules. Respond directly to the user following all length, voice, style adherence, and content priority rules.`;
-
-      const routerRes = await generateContentWithRouter({
-        contents: agentPrompt,
-        systemInstruction: selectedPrompt,
-        temperature: 0.6
-      });
-
-      if (routerRes.text && routerRes.text.trim().length > 0) {
-        finalReportText = routerRes.text;
-        finalReportStatus = 'ready';
-      }
-
-      // Save report to Firestore checkpoint if database is online
-      if (savedDocId && finalReportText) {
-        try {
-          await updateFacialScanReport(savedDocId, {
-            reportStatus: 'ready',
-            reportText: finalReportText,
-            reportSessionId
-          });
-        } catch (dbErr) {
-          console.warn("[ScanReport] Note: Firestore checkpoint update skipped (offline/quota):", dbErr);
-        }
-
-        try {
-          await saveChatMessage(userId, reportSessionId, [
-            {
-              id: `msg_user_prompt_${Date.now()}`,
-              role: 'user',
-              text: `Generate scan report for scan #${formattedScanId}`,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            },
-            {
-              id: `msg_report_${Date.now()}`,
-              role: 'assistant',
-              text: finalReportText,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              passOnTrace: routerRes.thoughts?.[0] || 'router_direct'
-            }
-          ]);
-        } catch (dbErr) {
-          console.warn("[ScanReport] Note: Chat message save skipped (offline/quota):", dbErr);
-        }
-      }
-
-      console.log(`[ScanReport] Synchronous AI report completed successfully for scan ${formattedScanId}`);
-    } catch (reportErr: any) {
-      console.error("[ScanReport] Error generating scan report:", reportErr);
-    }
-
-    // Assemble final response with EXACT raw Perfect Corp API payload + masks + report metadata
-    let parsedRawJson = null;
-    try {
-      parsedRawJson = JSON.parse(rawPerfectCorpOutput.rawResponseLog || '{}');
-    } catch {
-      parsedRawJson = { raw: rawPerfectCorpOutput.rawResponseLog };
-    }
-
-    const finalScanResult = {
-      id: savedDocId || formattedScanId,
-      userId,
-      scanId: formattedScanId,
-      scanType: scanTypeClean,
-      taskId: rawPerfectCorpOutput.taskId,
-      fileId: rawPerfectCorpOutput.fileId,
-      provider: rawPerfectCorpOutput.provider,
-      timestamp: now.toISOString(),
-      reportStatus: finalReportStatus,
-      reportSessionId,
-      reportText: finalReportText,
-      scoreSnapshot,
-      rawMetrics: rawPerfectCorpOutput.rawMetrics,
-      scoreInfo: rawPerfectCorpOutput.scoreInfo,
-      annotatedRegions: rawPerfectCorpOutput.annotatedRegions,
-      concernImages,
-      masks,
-      s2sStepLogs: rawPerfectCorpOutput.s2sStepLogs,
-      rawResponseLog: rawPerfectCorpOutput.rawResponseLog,
-      rawJson: parsedRawJson
-    };
-
-    return res.json(finalScanResult);
-  } catch (error: any) {
-    console.error("Error in /api/facial-scan pipeline:", error);
-    res.status(500).json({ error: "Failed to execute facial scan pipeline", details: error?.message });
-  }
-});
+app.post("/api/prosana/execute", handleExecuteAction);
+app.post("/api/sana/execute", handleExecuteAction);
 
 // Location Search Endpoint
 app.get("/api/location/search", async (req, res) => {
@@ -938,7 +645,7 @@ app.post("/api/daily-brief", async (req, res) => {
     if ((weather as any).isLocationMissing) {
       return res.json({
         isLocationMissing: true,
-        greeting: "Welcome to SANA",
+        greeting: "Welcome to prosana",
         temperature: "--",
         feelsLike: "--",
         weatherCondition: "Location Access Needed",
@@ -960,9 +667,9 @@ app.post("/api/daily-brief", async (req, res) => {
         vpdKpa: 0,
         uvIndexClearSky: 0,
         primaryReminders: [
-          "Set your location in Settings to receive real-time UV & climate barrier alerts.",
+          "Set your location in Settings to receive real-time UV & climate wellness alerts.",
           "Hydration target: 2.4L throughout the day",
-          "Scheduled evening facial barrier check at 9:00 PM"
+          "Scheduled evening wellness routine at 9:00 PM"
         ]
       });
     }
@@ -1013,9 +720,9 @@ app.post("/api/daily-brief", async (req, res) => {
       primaryReminders: [
         weather.uvIndex > 0
           ? `Apply broad-spectrum sunscreen before going outdoors (UV: ${weather.uvIndex} ${uvLevel})`
-          : `Nighttime: Zero solar UV radiation detected. Focus on PM barrier restoration & hydration.`,
+          : `Nighttime: Focus on evening wellness, hydration & rest.`,
         "Hydration target: 2.4L throughout the day",
-        "Scheduled evening facial barrier check at 9:00 PM"
+        "Scheduled evening wellness routine at 9:00 PM"
       ]
     });
   } catch (error: any) {
@@ -1080,7 +787,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`SANA Server listening on http://0.0.0.0:${PORT}`);
+    console.log(`prosana Server listening on http://0.0.0.0:${PORT}`);
   });
 }
 

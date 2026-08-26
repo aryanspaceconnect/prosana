@@ -30,26 +30,6 @@
       },
       "indexes": []
     },
-    "facial_scans": {
-      "schema": {
-        "userId": "string",
-        "imageUrl": "string",
-        "hydrationScore": "number",
-        "barrierScore": "number",
-        "clarityScore": "number",
-        "summary": "string",
-        "recommendations": "array",
-        "timestamp": "timestamp"
-      },
-      "indexes": [
-        {
-          "fields": [
-            {"field": "userId", "order": "ASCENDING"},
-            {"field": "timestamp", "order": "DESCENDING"}
-          ]
-        }
-      ]
-    },
     "chats": {
       "schema": {
         "userId": "string",

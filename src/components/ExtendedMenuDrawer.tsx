@@ -7,7 +7,7 @@ interface ExtendedMenuDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   userProfile: UserProfile | null;
-  onOpenScan: () => void;
+  onOpenScan?: () => void;
   onOpenSettings: () => void;
   onOpenReports: () => void;
   onOpenRoutine: () => void;
@@ -19,12 +19,10 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
   isOpen,
   onClose,
   userProfile,
-  onOpenScan,
   onOpenSettings,
   onOpenReports,
   onOpenRoutine,
   onOpenVault,
-  onOpenScanHistory
 }) => {
   const [dragStartY, setDragStartY] = useState<number | null>(null);
 
@@ -87,12 +85,12 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
                   />
                 ) : (
                   <div className="w-12 h-12 rounded-full bg-[#1a1c1e] text-white flex items-center justify-center font-medium text-base">
-                    {userProfile?.displayName ? userProfile.displayName.charAt(0).toUpperCase() : 'S'}
+                    {userProfile?.displayName ? userProfile.displayName.charAt(0).toUpperCase() : 'P'}
                   </div>
                 )}
                 <div>
                   <h4 className="text-[15px] font-semibold text-[#121316] tracking-tight">
-                    {userProfile?.displayName || 'SANA Companion'}
+                    {userProfile?.displayName || 'prosana Companion'}
                   </h4>
                   <p className="text-[12px] text-[#636a75]">
                     {userProfile?.email || 'Account & Settings'}
@@ -110,17 +108,17 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
               <button
                 onClick={() => {
                   onClose();
-                  onOpenScan();
+                  onOpenRoutine();
                 }}
                 className="w-full p-4 rounded-[22px] bg-white border border-[#eef1f5] shadow-xs hover:border-[#d0d5dd] hover:bg-[#f8f9fa] transition-all flex items-center justify-between group cursor-pointer"
               >
                 <div className="flex items-center space-x-3.5">
                   <div className="p-2.5 rounded-2xl bg-[#f0f4f8] text-[#1a1c1e] group-hover:bg-[#1a1c1e] group-hover:text-white transition-colors">
-                    <Icon icon="solar:scanner-linear" className="w-5 h-5" />
+                    <Icon icon="solar:checklist-minimalistic-linear" className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Facial Skin Scan</p>
-                    <p className="text-[12px] text-[#787f8d]">AI analysis for hydration & barrier check</p>
+                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Daily Health & Wellness Regimen</p>
+                    <p className="text-[12px] text-[#787f8d]">Custom AM & PM routine steps</p>
                   </div>
                 </div>
                 <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-[#a0a7b4] group-hover:translate-x-0.5 transition-transform" />
@@ -138,27 +136,8 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
                     <Icon icon="solar:chart-square-linear" className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Reports & Skin Metrics</p>
-                    <p className="text-[12px] text-[#787f8d]">Track hydration & barrier score trends</p>
-                  </div>
-                </div>
-                <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-[#a0a7b4] group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              <button
-                onClick={() => {
-                  onClose();
-                  onOpenRoutine();
-                }}
-                className="w-full p-4 rounded-[22px] bg-white border border-[#eef1f5] shadow-xs hover:border-[#d0d5dd] hover:bg-[#f8f9fa] transition-all flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2.5 rounded-2xl bg-[#f0f4f8] text-[#1a1c1e] group-hover:bg-[#1a1c1e] group-hover:text-white transition-colors">
-                    <Icon icon="solar:checklist-minimalistic-linear" className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Daily Skincare Regimen</p>
-                    <p className="text-[12px] text-[#787f8d]">Custom AM & PM routine steps</p>
+                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Health Reports & Trends</p>
+                    <p className="text-[12px] text-[#787f8d]">Track wellness metrics and vitals</p>
                   </div>
                 </div>
                 <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-[#a0a7b4] group-hover:translate-x-0.5 transition-transform" />
@@ -176,30 +155,11 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
                     <Icon icon="solar:vault-linear" className="w-5 h-5" />
                   </div>
                   <div className="text-left">
-                    <p className="text-[14px] font-semibold text-white">Sana Agent Vault</p>
-                    <p className="text-[12px] text-slate-300">Memory sessions, incidents, version diffs</p>
+                    <p className="text-[14px] font-semibold text-white">prosana Vault</p>
+                    <p className="text-[12px] text-slate-300">Memory sessions, notes, health documents</p>
                   </div>
                 </div>
                 <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-              </button>
-
-              <button
-                onClick={() => {
-                  onClose();
-                  if (onOpenScanHistory) onOpenScanHistory();
-                }}
-                className="w-full p-4 rounded-[22px] bg-white border border-[#eef1f5] shadow-xs hover:border-[#d0d5dd] hover:bg-[#f8f9fa] transition-all flex items-center justify-between group cursor-pointer"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="p-2.5 rounded-2xl bg-[#f0f4f8] text-[#1a1c1e] group-hover:bg-[#1a1c1e] group-hover:text-white transition-colors">
-                    <Icon icon="solar:history-bold" className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-[14px] font-semibold text-[#1a1c1e]">Scan History & Sessions</p>
-                    <p className="text-[12px] text-[#787f8d]">View gallery overlays & AI reports</p>
-                  </div>
-                </div>
-                <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-[#a0a7b4] group-hover:translate-x-0.5 transition-transform" />
               </button>
 
               <button
@@ -215,7 +175,7 @@ export const ExtendedMenuDrawer: React.FC<ExtendedMenuDrawerProps> = ({
                   </div>
                   <div className="text-left">
                     <p className="text-[14px] font-semibold text-[#1a1c1e]">Account & Preferences</p>
-                    <p className="text-[12px] text-[#787f8d]">Google Auth, °C/°F, Scan timing</p>
+                    <p className="text-[12px] text-[#787f8d]">Google Auth, °C/°F, Notification timing</p>
                   </div>
                 </div>
                 <Icon icon="solar:alt-arrow-right-linear" className="w-5 h-5 text-[#a0a7b4] group-hover:translate-x-0.5 transition-transform" />

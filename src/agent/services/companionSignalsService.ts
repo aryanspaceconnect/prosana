@@ -1,6 +1,6 @@
 import { getUniversalNotepad } from "../universalNotepad.js";
 import { fetchAdvancedEnvironmentalData } from "./WeatherAwarenessEngine.js";
-import { getPastScansForUser, db, sanitizeForFirestore } from "../../lib/firebase.js";
+import { db, sanitizeForFirestore } from "../../lib/firebase.js";
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { generateContentWithRouter, LLMRequestPriority } from "../llmRouter.js";
 
@@ -482,13 +482,8 @@ export async function getOrGenerateCompanionSignals(
     console.warn("[CompassionSignalsService] Weather error:", e);
   }
 
-  // Fetch Past Scans
-  let pastScans: any[] = [];
-  try {
-    pastScans = await getPastScansForUser(safeUid, 15);
-  } catch (e) {
-    console.warn("[CompassionSignalsService] Scans error:", e);
-  }
+    // Fetch Past Health & Wellness Logs
+    let pastScans: any[] = [];
 
   const currentTemp = envData ? `${Math.round(envData.currentExposome.tempC)}°C` : '28°C';
   const weatherCond = envData ? envData.currentExposome.weatherCondition : 'Partly Sunny';

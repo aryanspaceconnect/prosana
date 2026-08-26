@@ -76,7 +76,7 @@ export function sanitizeForFirestore<T>(obj: T): T {
 }
 
 // Initialize Firestore with explicit named database ID
-const databaseId = firebaseConfigData.firestoreDatabaseId || "ai-studio-sana-e13933ed-b4aa-407d-b645-bea9ad388315";
+const databaseId = firebaseConfigData.firestoreDatabaseId || "ai-studio-prosana-a619d218-5929-4c02-b550-15e9e8a52fce";
 export const db = (() => {
   try {
     return initializeFirestore(app, {
@@ -138,7 +138,7 @@ export const getUserProfileFromFirestore = async (uid: string) => {
   // Check LocalStorage cache first
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      const cached = localStorage.getItem(`sana_profile_${uid}`);
+      const cached = localStorage.getItem(`prosana_profile_${uid}`);
       if (cached) {
         const parsed = JSON.parse(cached);
         // Serve cached if fresh or quota reached
@@ -154,7 +154,7 @@ export const getUserProfileFromFirestore = async (uid: string) => {
       const profile = snap.data();
       if (typeof window !== 'undefined' && window.localStorage) {
         try {
-          localStorage.setItem(`sana_profile_${uid}`, JSON.stringify(profile));
+          localStorage.setItem(`prosana_profile_${uid}`, JSON.stringify(profile));
         } catch {}
       }
       return profile;
@@ -169,7 +169,7 @@ export const getUserProfileFromFirestore = async (uid: string) => {
   // Fallback to cached profile if available
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
-      const cached = localStorage.getItem(`sana_profile_${uid}`);
+      const cached = localStorage.getItem(`prosana_profile_${uid}`);
       if (cached) return JSON.parse(cached);
     } catch {}
   }
@@ -193,8 +193,8 @@ export const syncUserProfile = async (
 
     if (!snap.exists()) {
       await setDoc(userRef, sanitizeForFirestore({
-        displayName: customSettings?.preferredName || user.displayName || "SANA User",
-        email: user.email || "guest@sana.app",
+        displayName: customSettings?.preferredName || user.displayName || "prosana User",
+        email: user.email || "guest@prosana.app",
         photoURL: user.photoURL || "",
         preferredName: customSettings?.preferredName || user.displayName || "",
         locationName: customSettings?.locationName || "",
@@ -210,10 +210,8 @@ export const syncUserProfile = async (
         ...sanitizedTopLevel,
         settings: {
           temperatureUnit: "C",
-          scanNotificationTime: "00:00",
-          scanReminderEnabled: true,
           theme: "light",
-          onboardingCompleted: false,
+          onboardingCompleted: true,
           ...sanitizedSettings
         },
         createdAt: serverTimestamp(),
@@ -254,201 +252,6 @@ export const syncUserProfile = async (
   } catch (err) {
     console.warn("syncUserProfile Firestore warning:", err);
   }
-};
-
-// Save Facial Scan Result
-export const saveFacialScan = async (userId: string, scanData: any) => {
-  try {
-    const todayStr = new Date().toISOString().split('T')[0];
-    const ref = collection(db, "facial_scans");
-    const rawObj = {
-      userId: userId || 'guest_user',
-      scanId: scanData.scanId || scanData.id || `scan_${Date.now()}`,
-      scanType: scanData.scanType || 'daily_scan',
-      hydrationScore: scanData.hydrationScore ?? scanData.rawMetrics?.moistureScore ?? null,
-      barrierScore: scanData.barrierScore ?? scanData.rawMetrics?.barrierRednessScore ?? null,
-      clarityScore: scanData.clarityScore ?? scanData.rawMetrics?.acneBlemishScore ?? null,
-      summary: scanData.summary || "Skin analysis processed successfully.",
-      recommendations: scanData.recommendations || [],
-      uvRecommendation: scanData.uvRecommendation || "",
-      annotatedRegions: scanData.annotatedRegions || [],
-      rawMetrics: scanData.rawMetrics || null,
-      scoreInfo: scanData.scoreInfo || null,
-      concernImages: scanData.concernImages || null,
-      capturedImage: scanData.capturedImage ? (scanData.capturedImage.length < 800000 ? scanData.capturedImage : scanData.capturedImage) : null,
-      rawPerfectCorpOutput: scanData.rawPerfectCorpOutput || null,
-      scanDate: todayStr,
-      timestamp: serverTimestamp()
-    };
-    const cleanData = sanitizeForFirestore(rawObj);
-    const docRef = await addDoc(ref, cleanData);
-
-    // Also store in user-specific subcollection users/{userId}/{scanType}s
-    try {
-      const subFolder = scanData.scanType === 'intermediate_scan' ? 'intermediate_scans' : 'daily_scans';
-      const userScanRef = collection(db, "users", userId || 'guest_user', subFolder);
-      await addDoc(userScanRef, cleanData);
-    } catch (subErr) {
-      console.warn("Subcollection save warning:", subErr);
-    }
-
-    // MANDATORY DATABASE PERSISTENCE: Automatically record lastCompletedScanDate & guest scan allowance in Firestore
-    try {
-      const uId = userId || 'guest_user';
-      const userRef = doc(db, "users", uId);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists()) {
-        const existingData = userSnap.data();
-        const existingSettings = existingData.settings || {};
-        const existingAllowance = existingData.guestScanAllowance || { maxScans: 2, daysLimit: 2, totalScansDone: 0, scanDates: [] };
-        const scanDates = Array.isArray(existingAllowance.scanDates) ? [...existingAllowance.scanDates] : [];
-        if (!scanDates.includes(todayStr)) {
-          scanDates.push(todayStr);
-        }
-        const updatedCount = (existingAllowance.totalScansDone || 0) + 1;
-        
-        await updateDoc(userRef, {
-          "settings": {
-            ...existingSettings,
-            lastCompletedScanDate: todayStr
-          },
-          "guestScanAllowance": {
-            maxScans: 2,
-            daysLimit: 2,
-            totalScansDone: updatedCount,
-            scansCount: updatedCount,
-            firstScanDate: existingAllowance.firstScanDate || todayStr,
-            lastScanDate: todayStr,
-            scanDates
-          }
-        });
-      } else {
-        await setDoc(userRef, {
-          displayName: "Judge / Guest Explorer",
-          email: `${uId}@trial.sana.app`,
-          isAnonymous: true,
-          isGuestTrial: true,
-          settings: {
-            temperatureUnit: "C",
-            scanNotificationTime: "00:00",
-            scanReminderEnabled: true,
-            theme: "light",
-            onboardingCompleted: true,
-            lastCompletedScanDate: todayStr
-          },
-          guestScanAllowance: {
-            maxScans: 2,
-            daysLimit: 2,
-            totalScansDone: 1,
-            scansCount: 1,
-            firstScanDate: todayStr,
-            lastScanDate: todayStr,
-            scanDates: [todayStr]
-          },
-          createdAt: serverTimestamp()
-        });
-      }
-    } catch (userErr) {
-      console.warn("User lastCompletedScanDate Firestore sync warning:", userErr);
-    }
-
-    return docRef.id;
-  } catch (err) {
-    console.error("Failed to save facial scan to Firestore:", err);
-    return null;
-  }
-};
-
-// Update Facial Scan Report Text & Status
-export const updateFacialScanReport = async (docId: string, updatePayload: { reportStatus: string; reportText: string; reportSessionId?: string; updatedAt?: string }) => {
-  if (!docId) return;
-  try {
-    const scanRef = doc(db, "facial_scans", docId);
-    const cleanData = sanitizeForFirestore({
-      ...updatePayload,
-      updatedAt: serverTimestamp()
-    });
-    await updateDoc(scanRef, cleanData);
-  } catch (err) {
-    console.warn("Failed to update facial scan report:", err);
-  }
-};
-
-const PAST_SCANS_CACHE: Record<string, { scans: any[]; timestamp: number }> = {};
-
-// Get Past Scans for User (Promise)
-export const getPastScansForUser = async (userId: string, limitCount: number = 20): Promise<any[]> => {
-  const safeUid = userId || 'guest_user';
-  const now = Date.now();
-  if (PAST_SCANS_CACHE[safeUid] && (now - PAST_SCANS_CACHE[safeUid].timestamp < 120000)) {
-    return PAST_SCANS_CACHE[safeUid].scans.slice(0, limitCount);
-  }
-
-  try {
-    const q = query(
-      collection(db, "facial_scans"),
-      where("userId", "==", safeUid),
-      orderBy("timestamp", "desc")
-    );
-    const snap = await getDocs(q);
-    const scans = snap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, limitCount);
-    PAST_SCANS_CACHE[safeUid] = { scans, timestamp: now };
-    if (typeof window !== 'undefined' && window.localStorage && scans.length > 0) {
-      try {
-        localStorage.setItem(`sana_scans_${safeUid}`, JSON.stringify(scans));
-      } catch {}
-    }
-    return scans;
-  } catch (err: any) {
-    const isQuota = /quota/i.test(err?.message || String(err));
-    if (!isQuota) {
-      console.warn("getPastScansForUser error:", err?.message || err);
-    }
-    // Fallback to local storage if available
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const cached = localStorage.getItem(`sana_scans_${safeUid}`);
-        if (cached) {
-          return JSON.parse(cached);
-        }
-      } catch {}
-    }
-    return [];
-  }
-};
-
-// Subscribe to Facial Scan History
-export const subscribeFacialScans = (userId: string, callback: (scans: any[]) => void) => {
-  const safeUid = userId || 'guest_user';
-  const loadLocalScans = () => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const cached = localStorage.getItem(`sana_scans_${safeUid}`);
-        if (cached) callback(JSON.parse(cached));
-        else callback([]);
-      } catch { callback([]); }
-    } else { callback([]); }
-  };
-
-  const q = query(
-    collection(db, "facial_scans"),
-    where("userId", "==", safeUid),
-    orderBy("timestamp", "desc")
-  );
-
-  return onSnapshot(q, (snapshot) => {
-    const scans = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-    if (typeof window !== 'undefined' && window.localStorage && scans.length > 0) {
-      try { localStorage.setItem(`sana_scans_${safeUid}`, JSON.stringify(scans)); } catch {}
-    }
-    callback(scans);
-  }, (err: any) => {
-    const isQuota = /quota/i.test(err?.message || String(err));
-    if (!isQuota) {
-      console.warn("Firestore subscription error (facial_scans):", err?.message || err);
-    }
-    loadLocalScans();
-  });
 };
 
 // Chat & Multi-Session Persistence Helpers
@@ -660,7 +463,7 @@ export const subscribeUserSessions = (
   const loadLocalSessions = () => {
     if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        const cached = localStorage.getItem(`sana_sessions_${safeUid}`);
+        const cached = localStorage.getItem(`prosana_sessions_${safeUid}`);
         if (cached) callback(JSON.parse(cached));
         else callback([]);
       } catch { callback([]); }
@@ -676,7 +479,7 @@ export const subscribeUserSessions = (
         return timeB - timeA;
       });
       if (typeof window !== 'undefined' && window.localStorage) {
-        try { localStorage.setItem(`sana_sessions_${safeUid}`, JSON.stringify(list)); } catch {}
+        try { localStorage.setItem(`prosana_sessions_${safeUid}`, JSON.stringify(list)); } catch {}
       }
       callback(list);
     } else {

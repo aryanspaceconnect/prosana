@@ -20,11 +20,11 @@ import { PlusMenu } from './PlusMenu';
 import { SanaLogoIcon } from './SanaLogoIcon';
 
 const WELCOME_TITLES = [
-  "How can SANA assist your skin today?",
-  "Ready to review your daily routine?",
-  "Hello! What skin goal are we focusing on?",
-  "Your AI Skincare Advisor is active.",
-  "Welcome! Let's optimize your skin barrier."
+  "How can prosana assist your health today?",
+  "Ready to review your daily wellness check-in?",
+  "Hello! What health goal are we focusing on?",
+  "Your prosana health companion is active.",
+  "Welcome! Let's optimize your daily wellness."
 ];
 
 interface AIAgentChatProps {
@@ -191,9 +191,9 @@ const ChatMessageBubble = React.memo<ChatMessageBubbleProps>(
     // Clean text by removing raw [SEARCH: "..."] tags if any
     const rawText = msg.text || '';
     const isOffTopic = rawText.includes('[[OFF_TOPIC_REJECT]]') || rawText.includes('OFF_TOPIC_REJECT');
-    const OFF_TOPIC_MESSAGE = `I am SANA, your dedicated AI companion for skin health and dermatology. I am specialized to assist you with skin barrier analysis, routine advice, product recommendations, ingredient safety, and climate exposome protection.
+    const OFF_TOPIC_MESSAGE = `I am prosana, your dedicated AI health companion. I am specialized to assist you with wellness tracking, health routines, nutrition & lifestyle advice, daily check-ins, and climate exposome protection.
 
-I am unable to assist with unrelated topics like software coding, automobile purchases, or general trivia, but I would be delighted to help you with any questions about your skin, routine, or diagnostic reports!`;
+I am unable to assist with unrelated topics like software coding, automobile purchases, or general trivia, but I would be delighted to help you with any questions about your wellness, health routines, or daily reports!`;
 
     const displayText = isOffTopic
       ? OFF_TOPIC_MESSAGE
@@ -1169,7 +1169,7 @@ export const AIAgentChat: React.FC<AIAgentChatProps> = ({
               type="text"
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder={selectedAttachments.length > 0 ? "Add a message or press send..." : "Ask SANA or log a skin memory..."}
+              placeholder={selectedAttachments.length > 0 ? "Add a message or press send..." : "Ask prosana or log a wellness note..."}
               className="flex-1 px-1.5 text-[13px] text-[#121316] font-medium bg-transparent focus:outline-none placeholder-[#94a3b8] min-w-0"
             />
             {processingStatus === 'idle' ? (
@@ -1364,7 +1364,7 @@ export const AIAgentChat: React.FC<AIAgentChatProps> = ({
                     {sessionNotepadText ? (
                       <p className="text-slate-700 whitespace-pre-wrap">{sessionNotepadText}</p>
                     ) : (
-                      <p className="text-slate-400 italic">Empty. SANA logs working hypotheses and calculated indices here during this consultation.</p>
+                      <p className="text-slate-400 italic">Empty. prosana logs working hypotheses and calculated indices here during this consultation.</p>
                     )}
                   </div>
                 </div>

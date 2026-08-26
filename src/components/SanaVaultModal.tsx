@@ -2,9 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '@iconify/react';
 import { VaultFileExplorer } from './VaultFileExplorer';
-import { SkinHealthTrendGraph } from './SkinHealthTrendGraph';
-import { getPastScansForUser } from '../lib/firebase';
-import { FacialScanResult } from '../types';
 import {
   loadFullAgentVault,
   getVaultHistory,
@@ -32,7 +29,6 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<VaultTab>('overview');
   const [vaultData, setVaultData] = useState<AgentVaultData | null>(null);
-  const [userScans, setUserScans] = useState<FacialScanResult[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
   // Search state
@@ -95,12 +91,8 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
   const fetchVault = async () => {
     setLoading(true);
     try {
-      const [data, scans] = await Promise.all([
-        loadFullAgentVault(userId),
-        getPastScansForUser(userId).catch(() => [])
-      ]);
+      const data = await loadFullAgentVault(userId);
       setVaultData(data);
-      setUserScans(scans || []);
     } catch (err) {
       console.warn('Error loading Agent Vault:', err);
     } finally {
@@ -160,7 +152,7 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
               </div>
               <div>
                 <div className="flex items-center space-x-2">
-                  <h3 className="text-base font-semibold text-slate-900">Sana Agent Vault</h3>
+                  <h3 className="text-base font-semibold text-slate-900">prosana Vault</h3>
                   <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold border border-emerald-200/60">
                     Isolated Memory
                   </span>
@@ -241,7 +233,7 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full py-12 text-slate-400 space-y-3">
                 <Icon icon="solar:spinner-linear" className="w-8 h-8 animate-spin text-[#121316]" />
-                <p className="text-sm font-medium">Loading Sana Vault records...</p>
+                <p className="text-sm font-medium">Loading prosana Vault records...</p>
               </div>
             ) : (
               <>
@@ -462,15 +454,6 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
                 {/* TAB: SKIN PROFILE */}
                 {activeTab === 'skin_profile' && vaultData && (
                   <div className="space-y-6">
-                    {/* Minimalist Aesthetic Skin Health Graph */}
-                    <div className="p-5 rounded-2xl bg-white border border-slate-200/80 shadow-2xs">
-                      <SkinHealthTrendGraph
-                        scans={userScans}
-                        title="Skin Telemetry & Longitudinal Trend Graph"
-                        subtitle="Plotted directly from verified facial scan metrics (Read-Only AI Agent Input)"
-                      />
-                    </div>
-
                     {/* Skin Composition Card */}
                     <div className="p-5 rounded-2xl bg-[#121316] text-white space-y-4 shadow-xs">
                       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -548,7 +531,7 @@ export const SanaVaultModal: React.FC<SanaVaultModalProps> = ({
                         <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-2">
                           <p className="font-semibold text-slate-800">Baseline Assessment Active</p>
                           <p className="text-slate-500">
-                            Vault skin profile active. As you perform facial scans, log routines, or record incidents, Sana AI automatically tracks your skin barrier progression over time.
+                            Vault profile active. As you log routines, wellness check-ins, or record incidents, prosana automatically tracks your health & wellness progression over time.
                           </p>
                         </div>
                       )}

@@ -276,12 +276,12 @@ export interface DailyBriefing {
 
 export interface PopUpNotification {
   id: string;
-  type: 'facial_scan' | 'uv_alert' | 'agent_reminder' | 'custom_action';
+  type: 'facial_scan' | 'uv_alert' | 'agent_reminder' | 'custom_action' | 'agent_approval';
   title: string; // 10-30 characters
   subtitle: string;
   timeAgo: string;
   actionText?: string;
-  iconType?: 'scan' | 'sun' | 'sparkle' | 'shield' | 'droplet' | 'clock' | 'alert';
+  iconType?: 'scan' | 'sun' | 'sparkle' | 'sparkles' | 'shield' | 'droplet' | 'clock' | 'alert';
   badgeText?: string;
   actionTarget?: 'scan' | 'calendar' | 'reports' | 'vault' | 'agent';
   autoTriggered?: boolean;

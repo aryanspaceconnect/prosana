@@ -105,7 +105,7 @@ export const PopUpNotificationCard: React.FC<PopUpNotificationCardProps> = ({
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#475569]">
-                {notification.badgeText || (notification.type === 'facial_scan' ? 'DAILY FACIAL SCAN' : 'SANA ACTION POP-UP')}
+                {notification.badgeText || (notification.type === 'facial_scan' ? 'DAILY CHECK-IN' : 'prosana REMINDER')}
               </span>
             </div>
 

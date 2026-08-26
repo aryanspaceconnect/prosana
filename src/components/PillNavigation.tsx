@@ -196,7 +196,7 @@ export const PillNavigation: React.FC<PillNavigationProps> = ({
                     />
                   </button>
 
-                  {/* 2. SANA Agent */}
+                  {/* 2. prosana Companion */}
                   <button
                     onClick={() => {
                       onTabChange('agent');
@@ -207,7 +207,7 @@ export const PillNavigation: React.FC<PillNavigationProps> = ({
                         ? 'bg-[#1a1c1e] text-white shadow-xs'
                         : 'text-[#616874] hover:text-[#1a1c1e] hover:bg-[#f2f4f7]'
                     }`}
-                    title="SANA Agent"
+                    title="prosana Companion"
                   >
                     <SanaAgentLogoIcon size={19} color={activeTab === 'agent' ? '#ffffff' : '#616874'} />
                   </button>
@@ -342,18 +342,6 @@ export const PillNavigation: React.FC<PillNavigationProps> = ({
                           <span className="flex-1">Vault</span>
                         </button>
 
-                        {/* Scan History */}
-                        <button
-                          onClick={() => {
-                            if (onOpenScanHistory) onOpenScanHistory();
-                            setIsExpanded(false);
-                          }}
-                          className="w-full px-3.5 py-2.5 rounded-2xl flex items-center space-x-3 text-slate-800 hover:bg-[#f4f6f9] transition-all cursor-pointer font-medium text-sm text-left group"
-                        >
-                          <Icon icon="solar:history-bold" className="w-5 h-5 text-slate-600 group-hover:text-slate-900" />
-                          <span className="flex-1">Scan History</span>
-                        </button>
-
                         {/* User Profile */}
                         <button
                           onClick={() => {
@@ -444,7 +432,7 @@ export const PillNavigation: React.FC<PillNavigationProps> = ({
 
                         {/* Email */}
                         <a
-                          href="mailto:support@sana.app"
+                          href="mailto:support@prosana.app"
                           onClick={() => setIsExpanded(false)}
                           className="w-full px-3.5 py-2.5 rounded-2xl flex items-center space-x-3 text-slate-800 hover:bg-[#f4f6f9] transition-all cursor-pointer font-medium text-sm text-left group"
                         >

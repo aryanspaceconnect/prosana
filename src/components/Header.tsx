@@ -6,14 +6,14 @@ import { SanaLogoIcon } from './SanaLogoIcon';
 interface HeaderProps {
   userProfile: UserProfile | null;
   onOpenSettings: () => void;
-  onOpenScan: () => void;
+  onOpenScan?: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ userProfile, onOpenSettings, onOpenScan }) => {
+export const Header: React.FC<HeaderProps> = ({ userProfile, onOpenSettings }) => {
   const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
-    // Text "sana" naturally slides into the logo icon after 5 seconds
+    // Text "prosana" naturally slides into the logo icon after 5 seconds
     const timer = setTimeout(() => {
       setIsExpanded(false);
     }, 5000);
@@ -27,11 +27,11 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, onOpenSettings, onO
 
   return (
     <header className="relative w-full px-6 pt-5 pb-2 flex items-center justify-between z-20 pointer-events-auto shrink-0">
-      {/* Interactive SANA Brand with SVG Logo & Natural In-Logo Slide + Blur */}
+      {/* Interactive prosana Brand with SVG Logo & Natural In-Logo Slide + Blur */}
       <div
         className="flex items-center space-x-2 cursor-pointer select-none group py-1"
         onClick={handleToggle}
-        title="Toggle SANA logo text"
+        title="Toggle prosana logo text"
       >
         {/* SVG Logo Icon Mark */}
         <motion.div
@@ -67,7 +67,7 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, onOpenSettings, onO
           <motion.div
             initial={false}
             animate={{
-              x: isExpanded ? 0 : -35,
+              x: isExpanded ? 0 : -45,
               filter: isExpanded ? 'blur(0px)' : 'blur(4px)',
             }}
             transition={{
@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({ userProfile, onOpenSettings, onO
             className="whitespace-nowrap px-0.5"
           >
             <span className="text-[19px] font-bold tracking-tight text-[#1a1c1e] lowercase">
-              sana
+              prosana
             </span>
           </motion.div>
         </motion.div>

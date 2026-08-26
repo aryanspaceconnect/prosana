@@ -18,8 +18,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   userProfile,
   onUpdateSettings,
-  onTestTriggerPopup,
-  onRerunOnboarding
+  onTestTriggerPopup
 }) => {
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -62,7 +61,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const persistSettings = (updated: UserSettings) => {
     try {
-      localStorage.setItem('sana_user_settings_cache', JSON.stringify(updated));
+      localStorage.setItem('prosana_user_settings_cache', JSON.stringify(updated));
     } catch (e) {
       console.warn("Could not save settings to localStorage:", e);
     }
@@ -190,7 +189,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       lastCompletedScanDate: ''
     };
     persistSettings(updated);
-    alert("Daily scan completion status reset for testing. Re-open app or test trigger pop-up!");
+    alert("Daily check-in completion status reset for testing.");
   };
 
   const handleGoogleAuth = async () => {
@@ -232,7 +231,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
               <div>
                 <h3 className="text-[16px] font-semibold text-[#121316]">Account & Settings</h3>
-                <p className="text-[11px] text-[#787f8d]">SANA Personalization</p>
+                <p className="text-[11px] text-[#787f8d]">prosana Personalization</p>
               </div>
             </div>
 
@@ -297,38 +296,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          {/* Skin Profile Onboarding Questionnaire Card */}
-          <div className="p-3.5 rounded-2xl bg-[#f0f9ff] border border-[#bae6fd] flex items-center justify-between">
-            <div>
-              <p className="text-[13px] font-bold text-[#0369a1]">Skin Baseline Onboarding</p>
-              <p className="text-[11px] text-[#0284c7]">
-                {currentSettings.onboardingCompleted ? 'Completed 4-step skin profile setup' : 'Setup incomplete'}
-              </p>
-            </div>
-            <button
-              onClick={() => {
-                if (onRerunOnboarding) {
-                  onRerunOnboarding();
-                  onClose();
-                } else {
-                  const updated: UserSettings = {
-                    ...currentSettings,
-                    onboardingCompleted: false
-                  };
-                  onUpdateSettings(updated);
-                  if (userProfile?.uid) {
-                    syncUserProfile({ uid: userProfile.uid } as any, updated);
-                  }
-                  onClose();
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-[#0284c7] text-white text-[11.5px] font-semibold hover:bg-[#0369a1] transition-colors cursor-pointer shadow-2xs flex items-center space-x-1"
-            >
-              <Icon icon="solar:restart-bold" className="w-3.5 h-3.5" />
-              <span>{currentSettings.onboardingCompleted ? 'Re-take Onboarding' : 'Start Onboarding'}</span>
-            </button>
-          </div>
-
           {/* Preferences & Environmental Location Settings */}
           <div className="space-y-3 pt-1">
             <span className="text-[11px] font-semibold uppercase text-[#8e95a2] tracking-wider block">
@@ -340,7 +307,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold text-[#121316]">Environmental Location</p>
-                  <p className="text-[11px] text-[#787f8d]">Weather & UV Exposome station</p>
+                  <p className="text-[11px] text-[#787f8d]">Weather & Climate station</p>
                 </div>
                 <button
                   onClick={handleDetectGps}
@@ -461,21 +428,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* SANA Agent Response Style Preference */}
+            {/* prosana Agent Persona Preference */}
             <div className="p-3.5 rounded-2xl bg-[#f8f9fb] border border-[#eaedf1] space-y-2">
               <div>
-                <p className="text-[13px] font-semibold text-[#121316]">Agent Persona & Response Style</p>
-                <p className="text-[11px] text-[#787f8d]">Tone used during scan reports & chat</p>
+                <p className="text-[13px] font-semibold text-[#121316]">Agent Persona & Tone</p>
+                <p className="text-[11px] text-[#787f8d]">Tone used during consultations & daily guidance</p>
               </div>
 
               <select
-                value={currentSettings.responseStyle || 'professional_medical'}
+                value={currentSettings.responseStyle || 'casual_conversational'}
                 onChange={(e) => handleResponseStyleChange(e.target.value as any)}
                 className="w-full px-3 py-2 rounded-xl bg-white border border-[#d0d5dd] text-[12px] font-semibold text-[#121316] focus:outline-none"
               >
-                <option value="professional_medical">Clinical Dermatologist (Highly Professional)</option>
-                <option value="casual_conversational">Conversational Companion (Warm & Approachable)</option>
-                <option value="cool_friendly">Wellness Coach (Cool, Empathetic & Modern)</option>
+                <option value="casual_conversational">Warm & Empathetic Companion</option>
+                <option value="professional_medical">Clinical Health Specialist (Professional)</option>
+                <option value="cool_friendly">Health Coach (Modern & Motivational)</option>
               </select>
             </div>
 
@@ -484,7 +451,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-[13px] font-semibold text-[#121316]">Daily Companion Signals</p>
-                  <p className="text-[11px] text-[#787f8d]">Warm home screen signals based on live weather & goals</p>
+                  <p className="text-[11px] text-[#787f8d]">Home screen signals based on live weather & goals</p>
                 </div>
 
                 <button
@@ -502,11 +469,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Notification Time & Daily Scan Setting */}
+            {/* Notification Time & Daily Health Check-in Setting */}
             <div className="p-3.5 rounded-2xl bg-[#f8f9fb] border border-[#eaedf1] space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[13px] font-semibold text-[#121316]">Daily Scan Reminder</p>
+                  <p className="text-[13px] font-semibold text-[#121316]">Daily Health Reminder</p>
                   <p className="text-[11px] text-[#787f8d]">Pop-up check-in after set time</p>
                 </div>
 
@@ -525,7 +492,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
 
               <div className="flex items-center justify-between pt-1 border-t border-[#eaedf1]">
-                <span className="text-[12px] font-medium text-[#475569]">Check-in Time</span>
+                <span className="text-[12px] font-medium text-[#475569]">Reminder Time</span>
                 <select
                   value={currentSettings.scanNotificationTime}
                   onChange={(e) => handleScanTimeChange(e.target.value)}
@@ -540,10 +507,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Backdoor / Developer Test Triggers */}
+            {/* Developer Test Triggers */}
             <div className="space-y-2 pt-2 border-t border-[#eaedf1]">
               <span className="text-[11px] font-semibold uppercase text-[#8e95a2] tracking-wider block">
-                Pop-Up Card Backdoor & Testing
+                Notification Testing & Utilities
               </span>
 
               <div className="grid grid-cols-2 gap-2">
@@ -551,14 +518,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={() => {
                     if (onTestTriggerPopup) {
                       onTestTriggerPopup({
-                        id: `scan_popup_${Date.now()}`,
+                        id: `reminder_popup_${Date.now()}`,
                         type: 'facial_scan',
-                        title: 'Daily Facial Scan Due',
-                        subtitle: 'Complete your morning AI skin feature analysis.',
+                        title: 'Daily Health Check-in Due',
+                        subtitle: 'Take a moment for your daily wellness check-in.',
                         timeAgo: '12:00 AM',
-                        actionText: 'Start Daily Scan',
+                        actionText: 'Start Check-in',
                         iconType: 'scan',
-                        badgeText: 'DAILY FACIAL SCAN'
+                        badgeText: 'DAILY CHECK-IN'
                       });
                       onClose();
                     }
@@ -566,8 +533,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="p-2.5 rounded-2xl bg-[#f0f4f8] border border-[#d0dbe5] text-[11.5px] font-semibold text-[#121316] hover:bg-[#121316] hover:text-white transition-colors cursor-pointer text-left flex flex-col justify-between space-y-1"
                 >
                   <div className="flex items-center space-x-1.5">
-                    <Icon icon="solar:scanner-bold" className="w-4 h-4 text-emerald-600" />
-                    <span>Test Facial Scan</span>
+                    <Icon icon="solar:bell-bold-duotone" className="w-4 h-4 text-emerald-600" />
+                    <span>Test Reminder</span>
                   </div>
                   <span className="text-[10px] opacity-75">Dockable pop-up</span>
                 </button>
@@ -578,12 +545,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       onTestTriggerPopup({
                         id: `agent_popup_${Date.now()}`,
                         type: 'custom_action',
-                        title: 'Skin Barrier Alert',
-                        subtitle: 'Low humidity detected. Apply ceramide barrier cream.',
+                        title: 'Hydration & Wellness Alert',
+                        subtitle: 'Low humidity detected. Drink water and protect your skin barrier.',
                         timeAgo: 'Just now',
-                        actionText: 'Apply Routine',
+                        actionText: 'Review Guidance',
                         iconType: 'shield',
-                        badgeText: 'SANA AGENT ALERT'
+                        badgeText: 'prosana ALERT'
                       });
                       onClose();
                     }
@@ -602,7 +569,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={handleResetScanStatus}
                 className="w-full py-2 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-[#475569] text-[11px] font-medium transition-colors cursor-pointer"
               >
-                Reset Daily Scan Completion Status
+                Reset Daily Reminder Status
               </button>
             </div>
           </div>

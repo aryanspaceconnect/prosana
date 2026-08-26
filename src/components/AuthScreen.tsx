@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, User as UserIcon, Eye, EyeOff, Sparkles, ArrowRight, ShieldCheck, CheckCircle2, AlertCircle, Compass } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, Eye, EyeOff, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { signInWithGoogle, signInWithEmail, signUpWithEmail, getUserProfileFromFirestore } from '../lib/firebase';
-import { initializeGuestTrialUser } from '../lib/guestTrial';
 import { UserProfile } from '../types';
 import { SanaLogoIcon } from './SanaLogoIcon';
 
@@ -18,23 +17,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [guestLoading, setGuestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const handleGuestBypass = async () => {
-    setError(null);
-    setGuestLoading(true);
-    try {
-      const guestProfile = await initializeGuestTrialUser();
-      // Directly proceed to the main home screen (bypass onboarding)
-      onAuthSuccess(guestProfile, false);
-    } catch (err: any) {
-      console.error("Guest bypass error:", err);
-      setError("Unable to initiate trial session. Please try again.");
-    } finally {
-      setGuestLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -48,19 +31,19 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
         onAuthSuccess({
           uid: user.uid,
-          displayName: dbUserData?.displayName || user.displayName || 'SANA User',
-          email: dbUserData?.email || user.email || 'user@sana.app',
+          displayName: dbUserData?.displayName || user.displayName || 'prosana User',
+          email: dbUserData?.email || user.email || 'user@prosana.app',
           photoURL: dbUserData?.photoURL || user.photoURL || undefined,
           isAnonymous: false,
           settings: {
             temperatureUnit: 'C',
-            scanNotificationTime: '00:00',
+            scanNotificationTime: '09:00',
             scanReminderEnabled: true,
             theme: 'light',
             ...(dbUserData?.settings || {}),
-            onboardingCompleted: hasCompletedOnboarding
+            onboardingCompleted: true
           }
-        }, isNewUser);
+        }, false);
       }
     } catch (err: any) {
       console.error("Google sign in error:", err);
@@ -163,10 +146,10 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           <SanaLogoIcon size={38} color="#121316" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight text-[#121316] lowercase">
-          sana <span className="font-normal text-slate-500 tracking-normal">intelligence</span>
+          prosana <span className="font-normal text-slate-500 tracking-normal">intelligence</span>
         </h1>
         <p className="text-xs text-slate-500 mt-1 max-w-xs">
-          Personalized facial scanning, skin barrier analytics & AI health guidance
+          Your personal health companion & proactive wellness intelligence
         </p>
       </div>
 
@@ -311,7 +294,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           {/* Submit CTA Button */}
           <button
             type="submit"
-            disabled={loading || googleLoading || guestLoading}
+            disabled={loading || googleLoading}
             className="w-full py-3 px-4 rounded-2xl bg-[#121316] hover:bg-[#20232a] text-white text-xs font-semibold flex items-center justify-center space-x-2 transition-all duration-200 shadow-md shadow-slate-900/10 active:scale-[0.98] disabled:opacity-60 mt-2 cursor-pointer"
           >
             {loading ? (
@@ -324,35 +307,6 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
             )}
           </button>
         </form>
-
-        {/* Quick Bypass / Guest Trial Access Button */}
-        <div className="w-full flex items-center my-4">
-          <div className="flex-1 border-t border-slate-100" />
-          <span className="px-2.5 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">or instant trial</span>
-          <div className="flex-1 border-t border-slate-100" />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleGuestBypass}
-          disabled={guestLoading || loading || googleLoading}
-          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-slate-50 to-slate-100/90 hover:from-slate-100 hover:to-slate-200/90 border border-slate-200 text-[#121316] text-xs font-semibold flex items-center justify-between transition-all duration-200 active:scale-[0.98] disabled:opacity-60 group shadow-2xs cursor-pointer"
-        >
-          <div className="flex items-center space-x-2.5 text-left min-w-0">
-            <div className="p-1.5 rounded-xl bg-white shadow-2xs border border-slate-200/80 text-emerald-700 shrink-0">
-              <Sparkles className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-[12px] text-[#121316] truncate">Explore Without Sign In</p>
-              <p className="text-[10px] text-slate-500 font-normal truncate">Judge & Evaluation Access • Direct Home Screen</p>
-            </div>
-          </div>
-          {guestLoading ? (
-            <div className="w-4 h-4 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin shrink-0" />
-          ) : (
-            <ArrowRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-          )}
-        </button>
 
         {/* Mode Toggle Footnote */}
         <div className="mt-5 text-center">

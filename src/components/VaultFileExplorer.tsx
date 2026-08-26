@@ -170,7 +170,7 @@ export const VaultFileExplorer: React.FC<VaultFileExplorerProps> = ({
         path: '/portals/skin_analysis/dermatology_matrix.json',
         folderPath: '/portals/skin_analysis',
         content: JSON.stringify({
-          portalName: "Sana Diagnostic Matrix",
+          portalName: "prosana Diagnostic Matrix",
           generatedAt: new Date().toISOString(),
           barrierStatus: "Slightly Compromised",
           hydrationIndex: 72,
@@ -355,7 +355,7 @@ export const VaultFileExplorer: React.FC<VaultFileExplorerProps> = ({
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <h4 className="text-sm font-bold tracking-tight text-white">SANA-OS // Agent Portal System Drive</h4>
+              <h4 className="text-sm font-bold tracking-tight text-white">prosana-OS // Agent Portal System Drive</h4>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
                 ACTIVE PORTALS
               </span>
