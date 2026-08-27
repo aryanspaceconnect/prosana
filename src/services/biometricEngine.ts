@@ -233,42 +233,42 @@ export function processBiometricTimeSeries(
     };
   });
 
-  const hrRaw = sorted.map(s => s.heartRateBpm ?? 0);
+  const hrRaw = sorted.map(s => (typeof s.heartRateBpm === 'number' && s.heartRateBpm > 0) ? s.heartRateBpm : null).filter((v): v is number => v !== null);
   const stepsRaw = sorted.map(s => s.stepsDelta ?? 0);
   const calRaw = sorted.map(s => s.activeCaloriesDelta ?? 0);
-  const hrvRaw = sorted.map(s => s.hrvMs ?? 55);
-  const spo2Raw = sorted.map(s => s.spo2Percent ?? 98.4);
-  const stressRaw = sorted.map(s => s.stressLevel ?? 30);
-  const respRaw = sorted.map(s => s.respiratoryRate ?? 14);
-  const skinTempRaw = sorted.map(s => s.skinTempCelsius ?? 33.5);
-  const bpSysRaw = sorted.map(s => s.bloodPressureSystolic ?? 118);
-  const bpDiaRaw = sorted.map(s => s.bloodPressureDiastolic ?? 76);
-  const glucoseRaw = sorted.map(s => s.bloodGlucoseMmol ?? 5.2);
-  const distRaw = sorted.map(s => s.distanceMeters ?? 0);
-  const speedRaw = sorted.map(s => s.speedMps ?? 0);
-  const hydraRaw = sorted.map(s => s.hydrationLiters ?? 0);
-  const weightRaw = sorted.map(s => s.weightKg ?? 70);
-  const bodyFatRaw = sorted.map(s => s.bodyFatPercentage ?? 18.5);
+  const hrvRaw = sorted.map(s => (typeof s.hrvMs === 'number' && s.hrvMs > 0) ? s.hrvMs : null).filter((v): v is number => v !== null);
+  const spo2Raw = sorted.map(s => typeof s.spo2Percent === 'number' ? s.spo2Percent : null).filter((v): v is number => v !== null);
+  const stressRaw = sorted.map(s => typeof s.stressLevel === 'number' ? s.stressLevel : null).filter((v): v is number => v !== null);
+  const respRaw = sorted.map(s => typeof s.respiratoryRate === 'number' ? s.respiratoryRate : null).filter((v): v is number => v !== null);
+  const skinTempRaw = sorted.map(s => typeof s.skinTempCelsius === 'number' ? s.skinTempCelsius : null).filter((v): v is number => v !== null);
+  const bpSysRaw = sorted.map(s => typeof s.bloodPressureSystolic === 'number' ? s.bloodPressureSystolic : null).filter((v): v is number => v !== null);
+  const bpDiaRaw = sorted.map(s => typeof s.bloodPressureDiastolic === 'number' ? s.bloodPressureDiastolic : null).filter((v): v is number => v !== null);
+  const glucoseRaw = sorted.map(s => typeof s.bloodGlucoseMmol === 'number' ? s.bloodGlucoseMmol : null).filter((v): v is number => v !== null);
+  const distRaw = sorted.map(s => typeof s.distanceMeters === 'number' ? s.distanceMeters : null).filter((v): v is number => v !== null);
+  const speedRaw = sorted.map(s => typeof s.speedMps === 'number' ? s.speedMps : null).filter((v): v is number => v !== null);
+  const hydraRaw = sorted.map(s => typeof s.hydrationLiters === 'number' ? s.hydrationLiters : null).filter((v): v is number => v !== null);
+  const weightRaw = sorted.map(s => typeof s.weightKg === 'number' ? s.weightKg : null).filter((v): v is number => v !== null);
+  const bodyFatRaw = sorted.map(s => typeof s.bodyFatPercentage === 'number' ? s.bodyFatPercentage : null).filter((v): v is number => v !== null);
 
-  // Compute Normalization Lines (EMA baselines)
-  const hrEma = calculateExponentialMovingAverage(hrRaw.filter(v => v > 0).length ? hrRaw : [72]);
+  // Compute Normalization Lines (EMA baselines) from real numeric vectors
+  const hrEma = calculateExponentialMovingAverage(hrRaw.length ? hrRaw : [70]);
   const stepsEma = calculateExponentialMovingAverage(stepsRaw);
   const calEma = calculateExponentialMovingAverage(calRaw);
-  const hrvEma = calculateExponentialMovingAverage(hrvRaw);
-  const spo2Ema = calculateExponentialMovingAverage(spo2Raw);
-  const stressEma = calculateExponentialMovingAverage(stressRaw);
-  const respEma = calculateExponentialMovingAverage(respRaw);
-  const skinTempEma = calculateExponentialMovingAverage(skinTempRaw);
-  const bpSysEma = calculateExponentialMovingAverage(bpSysRaw);
-  const bpDiaEma = calculateExponentialMovingAverage(bpDiaRaw);
-  const glucoseEma = calculateExponentialMovingAverage(glucoseRaw);
-  const distEma = calculateExponentialMovingAverage(distRaw);
-  const speedEma = calculateExponentialMovingAverage(speedRaw);
-  const hydraEma = calculateExponentialMovingAverage(hydraRaw);
-  const weightEma = calculateExponentialMovingAverage(weightRaw);
-  const bodyFatEma = calculateExponentialMovingAverage(bodyFatRaw);
+  const hrvEma = calculateExponentialMovingAverage(hrvRaw.length ? hrvRaw : [55]);
+  const spo2Ema = calculateExponentialMovingAverage(spo2Raw.length ? spo2Raw : [98]);
+  const stressEma = calculateExponentialMovingAverage(stressRaw.length ? stressRaw : [30]);
+  const respEma = calculateExponentialMovingAverage(respRaw.length ? respRaw : [14]);
+  const skinTempEma = calculateExponentialMovingAverage(skinTempRaw.length ? skinTempRaw : [33.5]);
+  const bpSysEma = calculateExponentialMovingAverage(bpSysRaw.length ? bpSysRaw : [118]);
+  const bpDiaEma = calculateExponentialMovingAverage(bpDiaRaw.length ? bpDiaRaw : [76]);
+  const glucoseEma = calculateExponentialMovingAverage(glucoseRaw.length ? glucoseRaw : [5.2]);
+  const distEma = calculateExponentialMovingAverage(distRaw.length ? distRaw : [0]);
+  const speedEma = calculateExponentialMovingAverage(speedRaw.length ? speedRaw : [0]);
+  const hydraEma = calculateExponentialMovingAverage(hydraRaw.length ? hydraRaw : [0]);
+  const weightEma = calculateExponentialMovingAverage(weightRaw.length ? weightRaw : [70]);
+  const bodyFatEma = calculateExponentialMovingAverage(bodyFatRaw.length ? bodyFatRaw : [18]);
 
-  const hrStats = calculateStats(hrRaw.filter(v => v > 0));
+  const hrStats = calculateStats(hrRaw);
   const stepStats = calculateStats(stepsRaw);
   const calStats = calculateStats(calRaw);
   const hrvStats = calculateStats(hrvRaw);
@@ -313,11 +313,11 @@ export function processBiometricTimeSeries(
     const s = sorted[i];
 
     // 1. Heart Rate Point
-    const hrVal = s.heartRateBpm ?? (hrStats.mean || 72);
+    const hrVal = (typeof s.heartRateBpm === 'number' && s.heartRateBpm > 0) ? s.heartRateBpm : null;
     const hrNorm = hrEma[i] ?? hrStats.mean;
-    const hrDelta = Math.round((hrVal - hrNorm) * 10) / 10;
-    const hrZ = Math.round(((hrVal - hrStats.mean) / hrStats.stdDev) * 10) / 10;
-    const hrAnomaly = Math.abs(hrZ) >= 2.0;
+    const hrDelta = hrVal !== null ? Math.round((hrVal - hrNorm) * 10) / 10 : 0;
+    const hrZ = (hrVal !== null && hrStats.stdDev) ? Math.round(((hrVal - hrStats.mean) / hrStats.stdDev) * 10) / 10 : 0;
+    const hrAnomaly = hrVal !== null && Math.abs(hrZ) >= 2.0;
 
     timeSeries.heart_rate.push({
       timestamp: t.serverTime,
@@ -327,7 +327,7 @@ export function processBiometricTimeSeries(
       timeLabel: t.label,
       serverTimeLabel: t.serverLabel,
       unixMs: t.unixMs,
-      value: hrVal,
+      value: hrVal as any,
       normalizationLine: hrNorm,
       delta: hrDelta,
       zScore: hrZ,
@@ -335,23 +335,25 @@ export function processBiometricTimeSeries(
       unit: 'bpm'
     });
 
-    nodes.push({
-      id: `node_hr_${t.unixMs}`,
-      userId,
-      timestamp: t.serverTime,
-      serverTime: t.serverTime,
-      userLocalTime: t.userLocalTime,
-      userTimeZone: t.userTimeZone,
-      timeLabel: t.label,
-      metric: 'heart_rate',
-      value: hrVal,
-      normalizationLine: hrNorm,
-      delta: hrDelta,
-      zScore: hrZ,
-      anomaly: hrAnomaly,
-      state: hrVal > (hrStats.mean + hrStats.stdDev) ? 'elevated' : hrVal < (hrStats.mean - hrStats.stdDev) ? 'suppressed' : 'optimal',
-      createdAt: nowDual.serverTime
-    });
+    if (hrVal !== null) {
+      nodes.push({
+        id: `node_hr_${t.unixMs}`,
+        userId,
+        timestamp: t.serverTime,
+        serverTime: t.serverTime,
+        userLocalTime: t.userLocalTime,
+        userTimeZone: t.userTimeZone,
+        timeLabel: t.label,
+        metric: 'heart_rate',
+        value: hrVal,
+        normalizationLine: hrNorm,
+        delta: hrDelta,
+        zScore: hrZ,
+        anomaly: hrAnomaly,
+        state: hrVal > (hrStats.mean + hrStats.stdDev) ? 'elevated' : hrVal < (hrStats.mean - hrStats.stdDev) ? 'suppressed' : 'optimal',
+        createdAt: nowDual.serverTime
+      });
+    }
 
     // 2. Steps Point
     const stepVal = s.stepsDelta ?? 0;
@@ -662,8 +664,9 @@ export function processBiometricTimeSeries(
       unit: '%'
     });
 
-    const sVal = stressRaw[idx] ?? 30;
-    const sNorm = stressEma[idx] ?? 32;
+    const sample = sorted[idx];
+    const sVal = typeof sample?.stressLevel === 'number' ? sample.stressLevel : (stressRaw.length > 0 ? (stressRaw[idx] ?? null) : null);
+    const sNorm = sVal !== null ? (stressEma[idx] ?? 32) : 32;
     timeSeries.stress.push({
       timestamp: t.serverTime,
       serverTime: t.serverTime,
@@ -672,15 +675,15 @@ export function processBiometricTimeSeries(
       timeLabel: t.label,
       serverTimeLabel: t.serverLabel,
       unixMs: t.unixMs,
-      value: sVal,
+      value: sVal as any,
       normalizationLine: sNorm,
-      delta: sVal - sNorm,
-      zScore: (sVal - 32) / 14,
-      isAnomaly: sVal > 65,
+      delta: sVal !== null ? sVal - sNorm : 0,
+      zScore: sVal !== null ? (sVal - 32) / 14 : 0,
+      isAnomaly: sVal !== null && sVal > 65,
       unit: 'pts'
     });
 
-    const sleepScore = 85;
+    const sleepScore = realSet.has('sleep') ? 85 : null;
     timeSeries.sleep.push({
       timestamp: t.serverTime,
       serverTime: t.serverTime,
@@ -689,10 +692,10 @@ export function processBiometricTimeSeries(
       timeLabel: t.label,
       serverTimeLabel: t.serverLabel,
       unixMs: t.unixMs,
-      value: sleepScore,
+      value: sleepScore as any,
       normalizationLine: 82,
-      delta: 3,
-      zScore: 0.3,
+      delta: sleepScore !== null ? 3 : 0,
+      zScore: sleepScore !== null ? 0.3 : 0,
       isAnomaly: false,
       unit: '%'
     });
@@ -762,23 +765,30 @@ export function processBiometricTimeSeries(
   const realSet = new Set(metaOptions?.realMetricsReceived || []);
   const hasInstantaneousHr = metaOptions?.latestInstantaneousHeartRate != null && metaOptions.latestInstantaneousHeartRate > 0;
   const latestSample: WearableSample | undefined = sorted[sorted.length - 1];
-  const currentHr = hasInstantaneousHr ? metaOptions!.latestInstantaneousHeartRate! : (latestSample?.heartRateBpm || hrStats.mean || 72);
+  
+  const currentHr = hasInstantaneousHr
+    ? metaOptions!.latestInstantaneousHeartRate!
+    : (hrRaw.length > 0 ? (latestSample?.heartRateBpm || hrStats.mean) : null);
+  
   const totalSteps = sorted.reduce((a, b) => a + (b.stepsDelta || 0), 0);
   const totalCal = sorted.reduce((a, b) => a + (b.activeCaloriesDelta || 0), 0);
-  const currentHrv = latestSample?.hrvMs || hrvStats.mean || 58;
-  const totalDist = sorted.reduce((a, b) => a + (b.distanceMeters || 0), 0) || Math.round(totalSteps * 0.75);
-  const totalHydra = Math.round(sorted.reduce((a, b) => a + (b.hydrationLiters || 0), 0) * 100) / 100 || 0.75;
+  const currentHrv = hrvRaw.length > 0 ? (latestSample?.hrvMs || hrvStats.mean) : null;
+  const rawDistSum = sorted.reduce((a, b) => a + (b.distanceMeters || 0), 0);
+  const totalDist = rawDistSum > 0 ? rawDistSum : (realSet.has('distance') ? Math.round(totalSteps * 0.75) : null);
+  const rawHydraSum = Math.round(sorted.reduce((a, b) => a + (b.hydrationLiters || 0), 0) * 100) / 100;
+  const totalHydra = rawHydraSum > 0 ? rawHydraSum : (realSet.has('hydration') ? 0.75 : null);
 
+  const hrBaseline = hrStats.mean || 70;
   const currentVitals: Record<BiometricMetricType, BiometricBaselineMetric> = {
     heart_rate: {
       metric: 'heart_rate',
       currentValue: currentHr,
-      baseline: hrStats.mean || 72,
-      delta: Math.round((currentHr - (hrStats.mean || 72)) * 10) / 10,
-      percentDeviation: Math.round(((currentHr - (hrStats.mean || 72)) / (hrStats.mean || 72)) * 1000) / 10,
+      baseline: hrBaseline,
+      delta: currentHr !== null ? Math.round((currentHr - hrBaseline) * 10) / 10 : 0,
+      percentDeviation: currentHr !== null ? Math.round(((currentHr - hrBaseline) / hrBaseline) * 1000) / 10 : 0,
       unit: 'bpm',
-      trend: currentHr > (hrStats.mean || 72) ? 'rising' : currentHr < (hrStats.mean || 72) ? 'falling' : 'stable',
-      status: currentHr > 95 ? 'elevated' : currentHr < 55 ? 'suppressed' : 'optimal',
+      trend: currentHr !== null ? (currentHr > hrBaseline ? 'rising' : currentHr < hrBaseline ? 'falling' : 'stable') : 'stable',
+      status: currentHr !== null ? (currentHr > 95 ? 'elevated' : currentHr < 55 ? 'suppressed' : 'optimal') : 'optimal',
       stdDev: hrStats.stdDev,
       minNormal: DEFAULT_PHYSIOLOGY_BASELINES.heart_rate.minNormal,
       maxNormal: DEFAULT_PHYSIOLOGY_BASELINES.heart_rate.maxNormal,
@@ -818,43 +828,43 @@ export function processBiometricTimeSeries(
       metric: 'hrv',
       currentValue: currentHrv,
       baseline: hrvStats.mean || 58,
-      delta: Math.round((currentHrv - (hrvStats.mean || 58)) * 10) / 10,
-      percentDeviation: Math.round(((currentHrv - (hrvStats.mean || 58)) / (hrvStats.mean || 58)) * 100),
+      delta: currentHrv !== null ? Math.round((currentHrv - (hrvStats.mean || 58)) * 10) / 10 : 0,
+      percentDeviation: currentHrv !== null ? Math.round(((currentHrv - (hrvStats.mean || 58)) / (hrvStats.mean || 58)) * 100) : 0,
       unit: 'ms',
-      trend: currentHrv >= (hrvStats.mean || 58) ? 'rising' : 'falling',
-      status: currentHrv >= 50 ? 'optimal' : 'suppressed',
+      trend: currentHrv !== null ? (currentHrv >= (hrvStats.mean || 58) ? 'rising' : 'falling') : 'stable',
+      status: currentHrv !== null ? (currentHrv >= 50 ? 'optimal' : 'suppressed') : 'optimal',
       stdDev: hrvStats.stdDev,
       minNormal: 35,
       maxNormal: 85,
-      isRecordedFromGoogleFit: realSet.has('hrv')
+      isRecordedFromGoogleFit: realSet.has('hrv') || hrvRaw.length > 0
     },
     spo2: {
       metric: 'spo2',
-      currentValue: latestSample?.spo2Percent || 98.4,
+      currentValue: realSet.has('spo2') || spo2Raw.length > 0 ? (latestSample?.spo2Percent ?? spo2Stats.mean ?? null) : null,
       baseline: 98.2,
-      delta: 0.2,
-      percentDeviation: 0.2,
+      delta: 0,
+      percentDeviation: 0,
       unit: '%',
       trend: 'stable',
       status: 'optimal',
       stdDev: 0.8,
       minNormal: 95,
       maxNormal: 100,
-      isRecordedFromGoogleFit: realSet.has('spo2')
+      isRecordedFromGoogleFit: realSet.has('spo2') || spo2Raw.length > 0
     },
     stress: {
       metric: 'stress',
-      currentValue: latestSample?.stressLevel || 28,
+      currentValue: realSet.has('stress') || stressRaw.length > 0 ? (latestSample?.stressLevel ?? stressStats.mean ?? null) : null,
       baseline: 32,
-      delta: -4,
-      percentDeviation: -12.5,
+      delta: 0,
+      percentDeviation: 0,
       unit: 'pts',
-      trend: 'falling',
+      trend: 'stable',
       status: 'optimal',
       stdDev: 14,
       minNormal: 10,
       maxNormal: 60,
-      isRecordedFromGoogleFit: realSet.has('stress')
+      isRecordedFromGoogleFit: realSet.has('stress') || stressRaw.length > 0
     },
     readiness: {
       metric: 'readiness',
@@ -868,14 +878,14 @@ export function processBiometricTimeSeries(
       stdDev: 10,
       minNormal: 65,
       maxNormal: 100,
-      isRecordedFromGoogleFit: true
+      isRecordedFromGoogleFit: hrRaw.length > 0 || hasInstantaneousHr || totalSteps > 0
     },
     sleep: {
       metric: 'sleep',
-      currentValue: 85,
+      currentValue: realSet.has('sleep') ? 85 : null,
       baseline: 82,
-      delta: 3,
-      percentDeviation: 3.6,
+      delta: 0,
+      percentDeviation: 0,
       unit: '%',
       trend: 'stable',
       status: 'optimal',
@@ -886,7 +896,7 @@ export function processBiometricTimeSeries(
     },
     respiratory_rate: {
       metric: 'respiratory_rate',
-      currentValue: latestSample?.respiratoryRate || respStats.mean || 14,
+      currentValue: realSet.has('respiratory_rate') || respRaw.length > 0 ? (latestSample?.respiratoryRate ?? respStats.mean ?? null) : null,
       baseline: respStats.mean || 14,
       delta: 0,
       percentDeviation: 0,
@@ -896,11 +906,11 @@ export function processBiometricTimeSeries(
       stdDev: respStats.stdDev,
       minNormal: 12,
       maxNormal: 20,
-      isRecordedFromGoogleFit: realSet.has('respiratory_rate')
+      isRecordedFromGoogleFit: realSet.has('respiratory_rate') || respRaw.length > 0
     },
     skin_temp: {
       metric: 'skin_temp',
-      currentValue: latestSample?.skinTempCelsius || 33.5,
+      currentValue: realSet.has('skin_temp') || skinTempRaw.length > 0 ? (latestSample?.skinTempCelsius ?? skinTempStats.mean ?? null) : null,
       baseline: 33.5,
       delta: 0,
       percentDeviation: 0,
@@ -910,11 +920,11 @@ export function processBiometricTimeSeries(
       stdDev: 0.6,
       minNormal: 32.0,
       maxNormal: 35.5,
-      isRecordedFromGoogleFit: realSet.has('skin_temp')
+      isRecordedFromGoogleFit: realSet.has('skin_temp') || skinTempRaw.length > 0
     },
     blood_pressure_systolic: {
       metric: 'blood_pressure_systolic',
-      currentValue: latestSample?.bloodPressureSystolic || 118,
+      currentValue: realSet.has('blood_pressure_systolic') || bpSysRaw.length > 0 ? (latestSample?.bloodPressureSystolic ?? bpSysStats.mean ?? null) : null,
       baseline: 118,
       delta: 0,
       percentDeviation: 0,
@@ -924,11 +934,11 @@ export function processBiometricTimeSeries(
       stdDev: 8,
       minNormal: 90,
       maxNormal: 125,
-      isRecordedFromGoogleFit: realSet.has('blood_pressure_systolic')
+      isRecordedFromGoogleFit: realSet.has('blood_pressure_systolic') || bpSysRaw.length > 0
     },
     blood_pressure_diastolic: {
       metric: 'blood_pressure_diastolic',
-      currentValue: latestSample?.bloodPressureDiastolic || 76,
+      currentValue: realSet.has('blood_pressure_diastolic') || bpDiaRaw.length > 0 ? (latestSample?.bloodPressureDiastolic ?? bpDiaStats.mean ?? null) : null,
       baseline: 76,
       delta: 0,
       percentDeviation: 0,
@@ -938,11 +948,11 @@ export function processBiometricTimeSeries(
       stdDev: 6,
       minNormal: 60,
       maxNormal: 85,
-      isRecordedFromGoogleFit: realSet.has('blood_pressure_diastolic')
+      isRecordedFromGoogleFit: realSet.has('blood_pressure_diastolic') || bpDiaRaw.length > 0
     },
     blood_glucose: {
       metric: 'blood_glucose',
-      currentValue: latestSample?.bloodGlucoseMmol || 5.2,
+      currentValue: realSet.has('blood_glucose') || glucoseRaw.length > 0 ? (latestSample?.bloodGlucoseMmol ?? glucoseStats.mean ?? null) : null,
       baseline: 5.2,
       delta: 0,
       percentDeviation: 0,
@@ -952,53 +962,53 @@ export function processBiometricTimeSeries(
       stdDev: 0.8,
       minNormal: 4.0,
       maxNormal: 7.0,
-      isRecordedFromGoogleFit: realSet.has('blood_glucose')
+      isRecordedFromGoogleFit: realSet.has('blood_glucose') || glucoseRaw.length > 0
     },
     distance: {
       metric: 'distance',
       currentValue: totalDist,
       baseline: 2000,
-      delta: totalDist - 2000,
-      percentDeviation: Math.round(((totalDist - 2000) / 2000) * 100),
+      delta: totalDist !== null ? totalDist - 2000 : 0,
+      percentDeviation: totalDist !== null ? Math.round(((totalDist - 2000) / 2000) * 100) : 0,
       unit: 'm',
-      trend: totalDist > 2000 ? 'rising' : 'stable',
+      trend: totalDist !== null && totalDist > 2000 ? 'rising' : 'stable',
       status: 'optimal',
       stdDev: 500,
       minNormal: 500,
       maxNormal: 10000,
-      isRecordedFromGoogleFit: realSet.has('distance') || totalDist > 0
+      isRecordedFromGoogleFit: realSet.has('distance') || (totalDist !== null && totalDist > 0)
     },
     speed: {
       metric: 'speed',
-      currentValue: latestSample?.speedMps || 1.3,
+      currentValue: realSet.has('speed') || speedRaw.length > 0 ? (latestSample?.speedMps ?? speedStats.mean ?? null) : null,
       baseline: 1.2,
-      delta: 0.1,
-      percentDeviation: 8.3,
+      delta: 0,
+      percentDeviation: 0,
       unit: 'm/s',
       trend: 'stable',
       status: 'optimal',
       stdDev: 0.5,
       minNormal: 0.5,
       maxNormal: 3.5,
-      isRecordedFromGoogleFit: realSet.has('speed')
+      isRecordedFromGoogleFit: realSet.has('speed') || speedRaw.length > 0
     },
     hydration: {
       metric: 'hydration',
       currentValue: totalHydra,
       baseline: 2.0,
-      delta: Math.round((totalHydra - 2.0) * 100) / 100,
-      percentDeviation: Math.round(((totalHydra - 2.0) / 2.0) * 100),
+      delta: totalHydra !== null ? Math.round((totalHydra - 2.0) * 100) / 100 : 0,
+      percentDeviation: totalHydra !== null ? Math.round(((totalHydra - 2.0) / 2.0) * 100) : 0,
       unit: 'L',
-      trend: totalHydra > 1.5 ? 'rising' : 'falling',
-      status: totalHydra >= 1.5 ? 'optimal' : 'suppressed',
+      trend: totalHydra !== null && totalHydra > 1.5 ? 'rising' : 'falling',
+      status: totalHydra !== null && totalHydra >= 1.5 ? 'optimal' : 'suppressed',
       stdDev: 0.5,
       minNormal: 1.0,
       maxNormal: 4.0,
-      isRecordedFromGoogleFit: realSet.has('hydration') || totalHydra > 0
+      isRecordedFromGoogleFit: realSet.has('hydration') || (totalHydra !== null && totalHydra > 0)
     },
     weight: {
       metric: 'weight',
-      currentValue: latestSample?.weightKg || 70.0,
+      currentValue: realSet.has('weight') || weightRaw.length > 0 ? (latestSample?.weightKg ?? weightStats.mean ?? null) : null,
       baseline: 70.0,
       delta: 0,
       percentDeviation: 0,
@@ -1008,11 +1018,11 @@ export function processBiometricTimeSeries(
       stdDev: 1.5,
       minNormal: 45.0,
       maxNormal: 120.0,
-      isRecordedFromGoogleFit: realSet.has('weight')
+      isRecordedFromGoogleFit: realSet.has('weight') || weightRaw.length > 0
     },
     body_fat: {
       metric: 'body_fat',
-      currentValue: latestSample?.bodyFatPercentage || 18.5,
+      currentValue: realSet.has('body_fat') || bodyFatRaw.length > 0 ? (latestSample?.bodyFatPercentage ?? bodyFatStats.mean ?? null) : null,
       baseline: 18.5,
       delta: 0,
       percentDeviation: 0,
@@ -1022,7 +1032,7 @@ export function processBiometricTimeSeries(
       stdDev: 2.0,
       minNormal: 10.0,
       maxNormal: 32.0,
-      isRecordedFromGoogleFit: realSet.has('body_fat')
+      isRecordedFromGoogleFit: realSet.has('body_fat') || bodyFatRaw.length > 0
     }
   };
 
@@ -1203,22 +1213,8 @@ export class ServerBiometricEngine {
         userLocalTime: dual.userLocalTime,
         userTimeZone: targetTz,
         unixMs: t,
-        heartRateBpm: 70 + Math.round(Math.sin(i / 2) * 5),
-        stepsDelta: i % 3 === 0 ? Math.round(150 + Math.random() * 200) : 0,
-        activeCaloriesDelta: i % 3 === 0 ? Math.round(15 + Math.random() * 20) : 2,
-        hrvMs: 56 + Math.round(Math.cos(i / 2) * 6),
-        spo2Percent: 98.5,
-        stressLevel: 28 + Math.round(Math.sin(i) * 8),
-        respiratoryRate: 14 + Math.round(Math.sin(i / 3) * 2),
-        skinTempCelsius: 33.5 + Math.round(Math.sin(i / 4) * 0.3 * 10) / 10,
-        bloodPressureSystolic: 118 + Math.round(Math.sin(i / 2) * 4),
-        bloodPressureDiastolic: 76 + Math.round(Math.cos(i / 2) * 3),
-        bloodGlucoseMmol: 5.2 + Math.round(Math.sin(i / 3) * 0.4 * 10) / 10,
-        distanceMeters: i % 3 === 0 ? Math.round(110 + Math.random() * 150) : 0,
-        speedMps: i % 3 === 0 ? 1.3 : 0,
-        hydrationLiters: 0.25,
-        weightKg: 70.0,
-        bodyFatPercentage: 18.5
+        stepsDelta: 0,
+        activeCaloriesDelta: 0
       });
     }
 

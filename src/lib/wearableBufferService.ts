@@ -194,8 +194,20 @@ class WearableBufferManager {
   private lastFlushedAt: string | null = null;
   private isSyncing: boolean = false;
 
+  private scanTimer: any = null;
+
   constructor() {
     this.restoreFromLocalStorage();
+    this.startBackgroundScanner();
+  }
+
+  private startBackgroundScanner() {
+    if (this.scanTimer) clearInterval(this.scanTimer);
+    this.scanTimer = setInterval(() => {
+      if (this.connection?.provider === 'google_fit' && this.connection?.status === 'connected') {
+        this.scanLatestHeartRate().catch(() => {});
+      }
+    }, 30000);
   }
 
   public setUserId(uid: string) {
@@ -203,6 +215,7 @@ class WearableBufferManager {
       this.userId = uid;
       this.restoreFromLocalStorage();
       this.hydrateFromFirestore().catch(() => {});
+      this.startBackgroundScanner();
     }
   }
 
