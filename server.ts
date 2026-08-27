@@ -24,6 +24,7 @@ import {
   isTokenExpired,
   SAFETY_BUFFER_MS
 } from "./src/services/googleFitTokenManager.js";
+import { ServerBiometricEngine } from "./src/services/biometricEngine.js";
 
 dotenv.config();
 
@@ -388,6 +389,9 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       hasRealData: totalSteps > 0 || hrCount > 0
     };
 
+    // Compute Server Biometric Engine Frame (Normalization lines, Deltas, Graph Nodes & Edges)
+    const biometricFrame = ServerBiometricEngine.ingestAndCompute(userId, realSamples as any, true);
+
     // Cache in server memory
     serverWearableBufferMap.set(userId, {
       userId,
@@ -405,13 +409,58 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       tokenRefreshed: refreshed,
       tokenExpiresAt: expiresAt,
       summary,
-      samples: realSamples
+      samples: realSamples,
+      biometricFrame
     });
   } catch (err: any) {
     console.error("[Google Fit Sync Unexpected Exception]", err);
     res.status(500).json({ error: "Failed to connect to Google Fitness API", details: err?.message });
   }
 }));
+
+// 2b. Biometric Engine Live Frame Stream Endpoint (Sub-millisecond latency for live UI)
+app.get("/api/wearables/biometric-engine/live-frame/:userId", (req, res) => {
+  const userId = req.params.userId || "guest_user";
+  const frame = ServerBiometricEngine.getLiveFrame(userId) || ServerBiometricEngine.generateDefaultFrame(userId);
+  res.json({
+    status: "ok",
+    frame
+  });
+});
+
+// 2c. Biometric Engine Unified Query Endpoint (For Sana AI Agent & Deep Analytics)
+app.post("/api/wearables/biometric-engine/query-graph", (req, res) => {
+  const { userId, fields, timeRange, startTime, endTime, includeNormalizationLine, includeGraphCorrelations } = req.body;
+  const targetUid = userId || "guest_user";
+
+  const queryResult = ServerBiometricEngine.queryBiometricGraph({
+    userId: targetUid,
+    fields,
+    timeRange,
+    startTime,
+    endTime,
+    includeNormalizationLine,
+    includeGraphCorrelations
+  });
+
+  res.json(queryResult);
+});
+
+// 2d. Ingest Custom or Direct Wearable Stream into Biometric Engine
+app.post("/api/wearables/biometric-engine/ingest", (req, res) => {
+  const { userId, samples } = req.body;
+  const targetUid = userId || "guest_user";
+
+  if (!Array.isArray(samples)) {
+    return res.status(400).json({ error: "samples array required" });
+  }
+
+  const frame = ServerBiometricEngine.ingestAndCompute(targetUid, samples, true);
+  res.json({
+    status: "ok",
+    frame
+  });
+});
 
 // 2b. Google Fit Sleep & Workout Sessions Ingestion (Wrapped with Token Management)
 app.post("/api/wearables/google-fit/sessions", withValidGoogleToken(async (req, res, tokenContext) => {

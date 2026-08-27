@@ -392,3 +392,113 @@ export interface WearableBufferState {
   activeConnection: WearableConnectionState | null;
 }
 
+// ============================================================================
+// BIOMETRIC GRAPH & SERVER COMPUTATION ENGINE TYPES
+// ============================================================================
+
+export type BiometricMetricType = 
+  | 'heart_rate'
+  | 'steps'
+  | 'calories'
+  | 'hrv'
+  | 'spo2'
+  | 'stress'
+  | 'readiness'
+  | 'sleep';
+
+export interface BiometricGraphPoint {
+  timestamp: string; // ISO
+  timeLabel: string; // e.g. "14:20"
+  unixMs: number;
+  value: number;
+  normalizationLine: number; // Baseline computed on server
+  delta: number; // Value - NormalizationLine
+  zScore: number; // Standard deviation units from mean
+  isAnomaly: boolean; // |zScore| > 2.0
+  unit: string;
+}
+
+export interface BiometricBaselineMetric {
+  metric: BiometricMetricType;
+  currentValue: number;
+  baseline: number; // Normalization line average
+  delta: number; // Current - Baseline
+  percentDeviation: number; // ((Current - Baseline) / Baseline) * 100
+  unit: string;
+  trend: 'rising' | 'falling' | 'stable';
+  status: 'optimal' | 'elevated' | 'suppressed' | 'stable';
+  stdDev: number;
+  minNormal: number;
+  maxNormal: number;
+}
+
+export interface BiometricReadinessBreakdown {
+  score: number; // 0 - 100
+  status: 'Prime' | 'Optimal' | 'Recovering' | 'Strained';
+  hrvRecoveryFactor: number; // 0 - 100 (40% weight)
+  restingHrFactor: number; // 0 - 100 (30% weight)
+  sleepRecoveryFactor: number; // 0 - 100 (30% weight)
+  explanation: string;
+  lastCalculatedAt: string;
+}
+
+export interface BiometricGraphNode {
+  id: string;
+  userId: string;
+  timestamp: string;
+  metric: BiometricMetricType;
+  value: number;
+  normalizationLine: number;
+  delta: number;
+  zScore: number;
+  anomaly: boolean;
+  state: 'optimal' | 'elevated' | 'suppressed' | 'stable';
+  relatedEventId?: string;
+  createdAt: string;
+}
+
+export interface BiometricGraphEdge {
+  id: string;
+  userId: string;
+  sourceNodeId: string;
+  targetNodeId: string;
+  relationship: 
+    | 'exertion_drives_heart_rate'
+    | 'sustained_load_suppresses_hrv'
+    | 'step_volume_generates_calories'
+    | 'recovery_boosts_readiness'
+    | 'elevated_stress_impact'
+    | 'correlated_with';
+  weight: number; // 0.0 - 1.0 (correlation strength)
+  description: string;
+  timestamp: string;
+  createdAt: string;
+}
+
+export interface BiometricCorrelationInsight {
+  metricA: string;
+  metricB: string;
+  coefficient: number; // Pearson r (-1.0 to 1.0)
+  insight: string;
+  strength: 'strong' | 'moderate' | 'weak';
+}
+
+export interface BiometricEngineFrame {
+  userId: string;
+  updatedAt: string;
+  isLive: boolean;
+  totalSamplesAnalyzed: number;
+  currentVitals: Record<BiometricMetricType, BiometricBaselineMetric>;
+  readiness: BiometricReadinessBreakdown;
+  timeSeries: Record<BiometricMetricType, BiometricGraphPoint[]>;
+  correlations: BiometricCorrelationInsight[];
+  recentNodes: BiometricGraphNode[];
+  recentEdges: BiometricGraphEdge[];
+  bufferStatus: {
+    bufferedCount: number;
+    threshold: number;
+    lastFlushedToGraphDb?: string;
+  };
+}
+
+

@@ -1279,7 +1279,51 @@ export const queryWearableBiometricsTool: ToolDefinition = {
   }
 };
 
+export const queryUserBiometricGraphSchema = z.object({
+  fields: z.array(z.enum([
+    'heart_rate',
+    'steps',
+    'calories',
+    'hrv',
+    'spo2',
+    'stress',
+    'readiness',
+    'sleep'
+  ])).optional().describe('Specific vital signals to retrieve. If not provided or empty, defaults to all core vitals: heart_rate, steps, calories, hrv, readiness.'),
+  timeRange: z.enum(['1h', '6h', 'today', '7d', '30d']).optional().default('today').describe('Temporal window for time-series and normalization analysis.'),
+  includeNormalizationLine: z.boolean().optional().default(true).describe('Include server-computed physiological normalization baseline lines for each metric.'),
+  includeGraphCorrelations: z.boolean().optional().default(true).describe('Include relational graph edges and cross-metric correlation analysis (e.g., exertion to pulse response, HRV recovery).')
+});
+
+export const queryUserBiometricGraphTool: ToolDefinition = {
+  name: 'query_user_biometric_graph',
+  description: 'Single-command access to the user\'s biometric database and relational physiological graph. Retrieves live vitals, server-calculated normalization baseline lines, statistical deltas, anomaly flags, clinical readiness breakdown, and relational graph correlations.',
+  parameters: queryUserBiometricGraphSchema,
+  execute: async (args: z.infer<typeof queryUserBiometricGraphSchema>, context: AgentContext) => {
+    try {
+      const { ServerBiometricEngine } = await import('../services/biometricEngine.js');
+      const userId = context.userId || 'guest_user';
+
+      const result = ServerBiometricEngine.queryBiometricGraph({
+        userId,
+        fields: args.fields as any,
+        timeRange: args.timeRange,
+        includeNormalizationLine: args.includeNormalizationLine,
+        includeGraphCorrelations: args.includeGraphCorrelations
+      });
+
+      return result;
+    } catch (err: any) {
+      return {
+        success: false,
+        error: err?.message || 'Failed to query biometric graph database'
+      };
+    }
+  }
+};
+
 export const SANA_TOOL_REGISTRY: ToolDefinition[] = [
+  queryUserBiometricGraphTool,
   queryWearableBiometricsTool,
   webSearchTool,
   webFetchTool,

@@ -5,6 +5,7 @@ import { UserProfile, FacialScanResult, DailyBriefing, WearableBufferState } fro
 import { pickHomeGreeting, GreetingConfig } from '../lib/homeGreetings';
 import { wearableBufferService } from '../lib/wearableBufferService';
 import { WearablesHub } from './WearablesHub';
+import { formatCalorieUnit } from './BiometricGraphView';
 
 interface HomeDashboardProps {
   userProfile: UserProfile | null;
@@ -688,18 +689,24 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </div>
 
                 {/* Calories */}
-                <div 
-                  onClick={() => setIsWearablesOpen(true)}
-                  className="p-2.5 rounded-2xl bg-amber-50/60 border border-amber-100/80 cursor-pointer hover:bg-amber-50 transition-colors"
-                >
-                  <span className="text-[9.5px] font-bold text-amber-700 uppercase block">Burn</span>
-                  <div className="mt-1 flex items-baseline space-x-0.5">
-                    <span className="text-base font-bold text-amber-950">
-                      {Math.round(wearableState.pendingSamples.reduce((acc, s) => acc + (s.activeCaloriesDelta || 0), 0))}
-                    </span>
-                    <span className="text-[9px] font-semibold text-amber-600">kcal</span>
-                  </div>
-                </div>
+                {(() => {
+                  const totalBurn = wearableState.pendingSamples.reduce((acc, s) => acc + (s.activeCaloriesDelta || 0), 0);
+                  const calObj = formatCalorieUnit(totalBurn);
+                  return (
+                    <div 
+                      onClick={() => setIsWearablesOpen(true)}
+                      className="p-2.5 rounded-2xl bg-amber-50/60 border border-amber-100/80 cursor-pointer hover:bg-amber-50 transition-colors"
+                    >
+                      <span className="text-[9.5px] font-bold text-amber-700 uppercase block">Burn</span>
+                      <div className="mt-1 flex items-baseline space-x-0.5">
+                        <span className="text-base font-bold text-amber-950">
+                          {calObj.displayValue}
+                        </span>
+                        <span className="text-[9px] font-semibold text-amber-600 ml-0.5">{calObj.unit}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Intervals Synced */}
                 <div 
