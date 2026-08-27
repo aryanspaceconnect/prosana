@@ -370,7 +370,6 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
     aggregateBy: [
       { dataTypeName: "com.google.step_count.delta" },
       { dataTypeName: "com.google.calories.expended" },
-      { dataTypeName: "com.google.calories.bmr" },
       { dataTypeName: "com.google.heart_rate.bpm" },
       { dataTypeName: "com.google.heart_minutes" },
       { dataTypeName: "com.google.distance.delta" },

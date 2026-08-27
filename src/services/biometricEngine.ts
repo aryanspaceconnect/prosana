@@ -645,6 +645,7 @@ export function processBiometricTimeSeries(
 
   // Calculate Readiness
   const readiness = computeReadinessBreakdown(sorted, hrStats.mean || 72, hrvStats.mean || 58);
+  const realSet = new Set(metaOptions?.realMetricsReceived || []);
 
   // Generate Readiness, Stress and Sleep time series
   timestamps.forEach((t, idx) => {
@@ -762,7 +763,6 @@ export function processBiometricTimeSeries(
   }
 
   // Synthesize Current Baseline Vitals
-  const realSet = new Set(metaOptions?.realMetricsReceived || []);
   const hasInstantaneousHr = metaOptions?.latestInstantaneousHeartRate != null && metaOptions.latestInstantaneousHeartRate > 0;
   const latestSample: WearableSample | undefined = sorted[sorted.length - 1];
   
