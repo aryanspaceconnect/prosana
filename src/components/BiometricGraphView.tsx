@@ -29,11 +29,8 @@ interface BiometricGraphViewProps {
 
 // Client-side presentation formatting helpers
 export function formatCalorieUnit(val: number): { displayValue: string; unit: string } {
-  if (val == null || isNaN(val)) return { displayValue: '0', unit: 'cal' };
-  if (val < 1000) {
-    return { displayValue: `${Math.round(val)}`, unit: 'cal' };
-  }
-  return { displayValue: (val / 1000).toFixed(2), unit: 'kcal' };
+  if (val == null || isNaN(val)) return { displayValue: '0', unit: 'kcal' };
+  return { displayValue: `${Math.round(val).toLocaleString()}`, unit: 'kcal' };
 }
 
 export function formatMetricValue(metric: BiometricMetricType, val: number): string {

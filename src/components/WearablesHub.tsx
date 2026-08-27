@@ -175,11 +175,11 @@ export const WearablesHub: React.FC<WearablesHubProps> = ({ userId, isOpen, onCl
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-200/70'
                     : 'bg-slate-100 text-slate-600 border-slate-200'
                 }`}>
-                  {isConnected ? 'Connected & Live' : 'Ready to Connect'}
+                  {isConnected ? 'Google Fit Connected' : 'Ready to Connect'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 font-normal">
-                Official Google Fitness REST API Integration • 20-Minute Micro-Batching
+                Official Google Fitness REST API Integration • 20-Minute Intervals & High-Frequency Scan
               </p>
             </div>
           </div>

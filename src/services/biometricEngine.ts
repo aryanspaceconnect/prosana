@@ -806,7 +806,7 @@ export function processBiometricTimeSeries(
       baseline: DEFAULT_PHYSIOLOGY_BASELINES.calories.baseline,
       delta: Math.round((totalCal - DEFAULT_PHYSIOLOGY_BASELINES.calories.baseline) * 10) / 10,
       percentDeviation: Math.round(((totalCal - DEFAULT_PHYSIOLOGY_BASELINES.calories.baseline) / DEFAULT_PHYSIOLOGY_BASELINES.calories.baseline) * 100),
-      unit: 'cal',
+      unit: 'kcal',
       trend: totalCal > 300 ? 'rising' : 'stable',
       status: 'optimal',
       stdDev: calStats.stdDev,
@@ -1222,6 +1222,10 @@ export class ServerBiometricEngine {
       });
     }
 
-    return this.ingestAndCompute(userId, emptySamples, false, targetTz);
+    const frame = this.ingestAndCompute(userId, emptySamples, false, targetTz);
+    return {
+      ...frame,
+      isDemoFrame: true
+    };
   }
 }

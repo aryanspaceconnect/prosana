@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '@iconify/react';
 import { UserProfile, FacialScanResult, DailyBriefing, WearableBufferState } from '../types';
 import { pickHomeGreeting, GreetingConfig } from '../lib/homeGreetings';
-import { wearableBufferService } from '../lib/wearableBufferService';
+import { wearableBufferService, calculateBatchSummary } from '../lib/wearableBufferService';
 import { WearablesHub } from './WearablesHub';
 import { formatCalorieUnit } from './BiometricGraphView';
 
@@ -58,7 +58,19 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
     };
 
     window.addEventListener('prosana:wearables_updated', handleWearablesUpdate);
-    return () => window.removeEventListener('prosana:wearables_updated', handleWearablesUpdate);
+
+    // High-frequency 30-second poll for latest instantaneous heart rate scan
+    const scanInterval = setInterval(() => {
+      const state = wearableBufferService.getBufferState();
+      if (state.activeConnection?.provider === 'google_fit' && state.activeConnection?.status === 'connected') {
+        wearableBufferService.scanLatestHeartRate();
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener('prosana:wearables_updated', handleWearablesUpdate);
+      clearInterval(scanInterval);
+    };
   }, [userProfile?.uid]);
 
   const rawName =
@@ -662,18 +674,28 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[9.5px] font-bold text-rose-700 uppercase">Heart Rate</span>
-                    {wearableState.pendingSamples.some(s => (s.heartRateBpm || 0) > 0) ? (
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                    {wearableState.activeConnection?.latestInstantaneousHeartRate ? (
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" title="Latest Scan" />
                     ) : null}
                   </div>
                   <div className="mt-1 flex items-baseline space-x-0.5">
                     <span className="text-base font-bold text-rose-950">
                       {(() => {
+                        if (wearableState.activeConnection?.latestInstantaneousHeartRate) {
+                          return wearableState.activeConnection.latestInstantaneousHeartRate;
+                        }
                         const hrSample = [...wearableState.pendingSamples].reverse().find(s => typeof s.heartRateBpm === 'number' && s.heartRateBpm > 0);
-                        return hrSample?.heartRateBpm ?? (calculateBatchSummary(wearableState.pendingSamples).avgHeartRate || 72);
+                        if (hrSample?.heartRateBpm) return hrSample.heartRateBpm;
+                        const batchAvg = calculateBatchSummary(wearableState.pendingSamples).avgHeartRate;
+                        return batchAvg > 0 ? batchAvg : '—';
                       })()}
                     </span>
-                    <span className="text-[9px] font-semibold text-rose-600">BPM</span>
+                    <span className="text-[9px] font-semibold text-rose-600 ml-0.5">BPM</span>
+                  </div>
+                  <div className="text-[8.5px] text-rose-700/80 font-medium truncate mt-0.5">
+                    {wearableState.activeConnection?.latestInstantaneousHeartRate && wearableState.activeConnection?.latestHeartRateTimeLabel
+                      ? `Scan ${wearableState.activeConnection.latestHeartRateTimeLabel}`
+                      : wearableState.pendingSamples.some(s => (s.heartRateBpm || 0) > 0) ? '20-min avg' : 'No HR data'}
                   </div>
                 </div>
 

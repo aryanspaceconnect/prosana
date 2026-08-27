@@ -717,15 +717,15 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       realMetricsReceived,
       totalDistanceMeters: Math.round(totalDistance),
       totalHydrationLiters: Math.round(totalHydration * 100) / 100,
-      avgSpo2: latestSpo2 || 98.4,
-      avgRespiratoryRate: latestResp || 14,
-      avgSkinTemp: latestTemp || 33.5,
-      latestBloodPressureSystolic: latestSys || 118,
-      latestBloodPressureDiastolic: latestDia || 76,
-      latestBloodGlucose: latestGlucose || 5.2,
-      latestWeightKg: latestWeight || 70.0,
-      latestBodyFatPercent: latestBodyFat || 18.5,
-      avgStress: 28,
+      avgSpo2: latestSpo2,
+      avgRespiratoryRate: latestResp,
+      avgSkinTemp: latestTemp,
+      latestBloodPressureSystolic: latestSys,
+      latestBloodPressureDiastolic: latestDia,
+      latestBloodGlucose: latestGlucose,
+      latestWeightKg: latestWeight,
+      latestBodyFatPercent: latestBodyFat,
+      avgStress: undefined as number | undefined,
       sampleCount: realSamples.length,
       hasRealData: totalSteps > 0 || hrCount > 0 || latestInstantaneousHeartRate != null || realSamples.some(s => (s.heartRateBpm || 0) > 0)
     };
@@ -790,6 +790,54 @@ app.get("/api/wearables/google-fit/data-sources", withValidGoogleToken(async (_r
     });
   } catch (err: any) {
     res.status(500).json({ error: "Failed to fetch Google Fit data sources", details: err?.message });
+  }
+}));
+
+// 2c. High-Frequency Latest Heart Rate Scan Endpoint (Polls raw heart_rate dataset)
+app.get("/api/wearables/google-fit/latest-hr", withValidGoogleToken(async (req, res, tokenContext) => {
+  const { userId, accessToken } = tokenContext;
+  try {
+    const nowMs = Date.now();
+    const fifteenMinsAgoMs = nowMs - (15 * 60 * 1000);
+    const datasetId = `${fifteenMinsAgoMs * 1000000}-${nowMs * 1000000}`;
+    const rawHrUrl = `https://www.googleapis.com/fitness/v1/users/me/dataSources/derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm/datasets/${datasetId}`;
+
+    const rawHrRes = await fetch(rawHrUrl, {
+      headers: { "Authorization": `Bearer ${accessToken}` }
+    });
+
+    if (rawHrRes.ok) {
+      const rawHrJson = await rawHrRes.json();
+      const points = rawHrJson.point || [];
+      if (points.length > 0) {
+        const lastPoint = points[points.length - 1];
+        const val = lastPoint.value?.[0]?.fpVal ?? lastPoint.value?.[0]?.intVal;
+        const ptTimeMs = Number(lastPoint.endTimeNanos) / 1000000 || Number(lastPoint.startTimeNanos) / 1000000;
+        if (val != null && !isNaN(val) && val > 0) {
+          const ageMinutes = Math.max(0, Math.round((nowMs - ptTimeMs) / (60 * 1000)));
+          const timeLabel = new Date(ptTimeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return res.json({
+            status: "ok",
+            userId,
+            latestInstantaneousHeartRate: Math.round(val),
+            latestHeartRateTimeLabel: timeLabel,
+            ageMinutes,
+            scannedAt: new Date().toISOString()
+          });
+        }
+      }
+    }
+
+    res.json({
+      status: "ok",
+      userId,
+      latestInstantaneousHeartRate: undefined,
+      latestHeartRateTimeLabel: undefined,
+      ageMinutes: undefined,
+      scannedAt: new Date().toISOString()
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to scan latest heart rate", details: err?.message });
   }
 }));
 

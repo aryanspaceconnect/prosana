@@ -326,6 +326,10 @@ export interface WearableConnectionState {
   lastRefreshedAt?: string;
   accountEmail?: string;
   errorMessage?: string;
+  latestInstantaneousHeartRate?: number;
+  latestHeartRateTimeLabel?: string;
+  realMetricsReceived?: string[];
+  hasRealData?: boolean;
 }
 
 export interface GoogleOAuthTokenRecord {
@@ -514,7 +518,7 @@ export interface BiometricGraphPoint {
 
 export interface BiometricBaselineMetric {
   metric: BiometricMetricType;
-  currentValue: number;
+  currentValue?: number;
   baseline: number; // Normalization line average
   delta: number; // Current - Baseline
   percentDeviation: number; // ((Current - Baseline) / Baseline) * 100
@@ -594,6 +598,7 @@ export interface BiometricEngineFrame {
   userLocalTime?: string;
   userTimeZone?: string;
   isLive: boolean;
+  isDemoFrame?: boolean;
   totalSamplesAnalyzed: number;
   currentVitals: Record<BiometricMetricType, BiometricBaselineMetric>;
   readiness: BiometricReadinessBreakdown;

@@ -591,6 +591,10 @@ class WearableBufferManager {
         this.connection.status = 'connected';
         this.connection.lastSyncedAt = new Date().toISOString();
         this.connection.errorMessage = undefined;
+        this.connection.latestInstantaneousHeartRate = summary.latestInstantaneousHeartRate;
+        this.connection.latestHeartRateTimeLabel = summary.latestHeartRateTimeLabel;
+        this.connection.realMetricsReceived = summary.realMetricsReceived;
+        this.connection.hasRealData = summary.hasRealData;
       }
       this.persistToLocalStorage();
 
@@ -656,6 +660,43 @@ class WearableBufferManager {
     }
 
     this.broadcastStateChange();
+  }
+
+  public async scanLatestHeartRate(): Promise<{
+    latestInstantaneousHeartRate?: number;
+    latestHeartRateTimeLabel?: string;
+  }> {
+    if (!this.connection || this.connection.provider !== 'google_fit' || !this.connection.accessToken) {
+      return {};
+    }
+
+    try {
+      const validToken = await this.ensureFreshAccessToken() || this.connection.accessToken;
+      if (!validToken) return {};
+
+      const res = await fetch('/api/wearables/google-fit/latest-hr', {
+        headers: {
+          'Authorization': `Bearer ${validToken}`
+        }
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.latestInstantaneousHeartRate && this.connection) {
+          this.connection.latestInstantaneousHeartRate = data.latestInstantaneousHeartRate;
+          this.connection.latestHeartRateTimeLabel = data.latestHeartRateTimeLabel;
+          this.persistToLocalStorage();
+          this.broadcastStateChange();
+          return {
+            latestInstantaneousHeartRate: data.latestInstantaneousHeartRate,
+            latestHeartRateTimeLabel: data.latestHeartRateTimeLabel
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('[WearableBuffer] Latest HR scan warning:', e);
+    }
+    return {};
   }
 
   public getBufferState(): WearableBufferState {
