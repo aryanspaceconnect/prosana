@@ -332,13 +332,13 @@ export function runPostLlmGuard(
   if (cleaned.length === 0) {
     if (options.isNight) {
       return [
-        "Seal nighttime hydration with a ceramide barrier cream.",
-        "Pause exfoliating acids overnight to encourage skin recovery."
+        "Prioritize 8 hours of sleep to support HRV recovery and resting heart rate.",
+        "Dim bright screens 30 minutes before bed to align circadian rhythm."
       ];
     }
     return [
-      "Layer a light hyaluronic hydrating gel before stepping out.",
-      "Apply a broad-spectrum fluid SPF 30 for daytime protection."
+      "Hydrate consistently today to maintain steady energy and optimal cardiac output.",
+      "Pace outdoor activities while ambient temperature and humidity remain high."
     ];
   }
 
@@ -507,36 +507,35 @@ export async function getOrGenerateCompanionSignals(
   }
 
   // Build System & User Prompt according to exact user specifications
-  const systemInstruction = `You write Daily Focus lines for a skincare home screen.
+  const systemInstruction = `You write Daily Focus lines for a health & vital home screen.
 
 Brain-wise: home is glanced, not read. Working memory holds ~one actionable thought per line.
-Every line must be concrete, specific, and directly useful.
+Every line must be concrete, specific, and directly useful for health, vitals, hydration, activity, recovery, and environmental wellness.
 
 Max 90 characters a line, 60-80 suggested, 2 to 3 lines total.
 
 VOICE & TONE:
-- Practical, dermatologically grounded, calm.
-- Every line MUST state a clear, specific action, product type, texture, or ingredient.
+- Practical, evidence-grounded, calm, health-focused.
+- Every line MUST state a clear, specific health, vital, hydration, activity, or recovery action.
+- Focus on heart rate, steps, hydration, sleep, stress, respiratory comfort, and environment impact.
 - Glanced and understood in under two seconds.
 
 STRICTLY PROHIBITED (Hard Ban):
-1. NO OBVIOUS WEATHER REPORTING: Do NOT narrate raw weather conditions already visible in the weather card (e.g. "Humidity is high with this afternoon drizzle", "It is raining outside"). Connect the condition directly to an actionable skincare choice (e.g. "High air moisture slows evaporation — switch to a lightweight gel.").
-2. NO VAGUE FLUFF OR PERSONIFICATION: NEVER say "your barrier loves gentle hydration", "skin loves care", "support your barrier with calm steps", "take gentle moments". These are forbidden.
-3. NO AMBIGUOUS PHRASING: NEVER say "a light layer still helps" without stating EXACTLY what the layer is (e.g. "A fluid broad-spectrum SPF 30 protects against UV through clouds", "A thin layer of squalane locks in moisture").
-4. NO FILLER OR THROAT-CLEARING: No "Remember:", "Keep in mind:", "Don't forget:", "Here's the thing:".
+1. NO FACE OR SKIN CARE: DO NOT mention skincare, face, serums, SPF, niacinamide, retinol, moisturizers, barrier creams, acne, or facial routines.
+2. NO OBVIOUS WEATHER REPORTING: Connect weather/environment directly to vital health choices (e.g. "High heat increases cardiac effort — schedule heavy walks for early evening.").
+3. NO VAGUE FLUFF OR PERSONIFICATION: NEVER say "your body craves love", "be gentle with yourself", "take gentle moments".
+4. NO FILLER OR THROAT-CLEARING: No "Remember:", "Keep in mind:", "Don't forget:".
 5. NO REPETITIVE PHRASES: Do not repeat user name or city.
-6. NO NIGHTTIME SPF: If isNight is true, do not mention SPF or UV.
 
 HARD RULES:
 - Output ONLY a JSON array of strings. No markdown, no prose outside JSON.
 - Exactly 2 to 3 lines.
 - Each line: max 80 characters (absolute hard limit 90).
-- Be precise with textures and ingredients: specify "fluid SPF", "hyaluronic serum", "ceramide cream", "gel cleanser", "niacinamide", "salicylic acid pause", etc.
+- Focus on vitals, heart rate recovery, hydration targets, step goals, sleep hygiene, and environmental health guidance.
 
 GOOD EXAMPLES:
-["High air humidity — swap heavy cream for a light hydrating gel.", "Moderate UV through cloud cover — apply fluid SPF 30 before leaving."]
-["Dry indoor AC running — mist and seal with a ceramide moisturizer.", "Pause retinol tonight to give your barrier a recovery window."]
-["Post-workout sweat buildup — cleanse with a gentle low-pH wash.", "Keep pores clear with a lightweight BHA swipe."]`;
+["High humidity elevates exertion strain — sip electrolytes and pace afternoon walks.", "Moderate UV index today — stay hydrated and seek shade during peak hours."]
+["Resting heart rate slightly elevated — prioritize early sleep and light stretching tonight.", "Hydration levels drop in AC air — aim for 2.5L water throughout the day."]`;
 
   const promptContent = `CURRENT TIME & DIURNAL INTERVAL:
 - Local Time: ${localHour.toString().padStart(2, '0')}:00 (Current Interval: ${windowInfo.label})

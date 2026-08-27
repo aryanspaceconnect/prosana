@@ -65,6 +65,10 @@ export const AgentStateAnnotation = Annotation.Root({
   systemPrompt: Annotation<string | undefined>({
     value: (x, y) => (y !== undefined ? y : x),
     default: () => undefined
+  }),
+  userTimeZone: Annotation<string | undefined>({
+    value: (x, y) => (y !== undefined ? y : x),
+    default: () => undefined
   })
 });
 

@@ -343,14 +343,30 @@ export interface GoogleOAuthTokenRecord {
 
 export interface WearableSample {
   timestamp: string; // ISO
+  serverTime?: string; // Server UTC ISO timestamp
+  userLocalTime?: string; // Translated User Local timestamp ISO/string
+  userTimeZone?: string; // Active user timezone (e.g. America/Los_Angeles)
   unixMs: number;
   heartRateBpm?: number;
   hrvMs?: number;
   stepsDelta?: number;
   activeCaloriesDelta?: number;
+  bmrCaloriesDelta?: number;
   spo2Percent?: number;
   respiratoryRate?: number;
   skinTempCelsius?: number;
+  bloodPressureSystolic?: number;
+  bloodPressureDiastolic?: number;
+  bloodGlucoseMmol?: number;
+  distanceMeters?: number;
+  speedMps?: number;
+  hydrationLiters?: number;
+  weightKg?: number;
+  bodyFatPercentage?: number;
+  sleepStage?: 'awake' | 'light' | 'deep' | 'rem' | 'sleeping' | 'out_of_bed' | string;
+  sleepStageCode?: number;
+  activityType?: string;
+  activityTypeCode?: number;
   stressLevel?: number; // 0-100 (0=relaxed, 100=extreme stress)
 }
 
@@ -361,10 +377,74 @@ export interface WearableBatchSummary {
   avgHrv: number;
   totalSteps: number;
   totalActiveCalories: number;
+  totalBmrCalories?: number;
   avgSpo2: number;
   avgStress: number;
+  avgRespiratoryRate?: number;
+  avgSkinTemp?: number;
+  latestBloodPressureSystolic?: number;
+  latestBloodPressureDiastolic?: number;
+  latestBloodGlucose?: number;
+  totalDistanceMeters?: number;
+  totalHydrationLiters?: number;
+  latestWeightKg?: number;
+  latestBodyFatPercent?: number;
+  latestInstantaneousHeartRate?: number;
+  latestHeartRateTimeLabel?: string;
+  realMetricsReceived?: string[];
   sleepScore?: number;
   readinessScore?: number;
+}
+
+export interface GoogleFitSession {
+  id: string;
+  name: string;
+  description?: string;
+  activityType: number;
+  activityName?: string;
+  startTimeMillis: string;
+  endTimeMillis: string;
+  modifiedTimeMillis?: string;
+  application?: {
+    packageName?: string;
+    name?: string;
+  };
+  activeTimeMillis?: string;
+}
+
+export interface GoogleFitDataSource {
+  dataStreamId: string;
+  dataStreamName?: string;
+  type: 'raw' | 'derived' | string;
+  dataType: {
+    name: string;
+    field?: Array<{ name: string; format: string }>;
+  };
+  device?: {
+    uid?: string;
+    type?: string;
+    model?: string;
+    manufacturer?: string;
+    version?: string;
+  };
+  application?: {
+    packageName?: string;
+    name?: string;
+    version?: string;
+  };
+}
+
+export interface WearableComprehensiveSyncResult {
+  status: string;
+  provider: string;
+  syncedAt: string;
+  tokenRefreshed?: boolean;
+  tokenExpiresAt?: number;
+  summary: WearableBatchSummary;
+  samples: WearableSample[];
+  sessions: GoogleFitSession[];
+  dataSources: GoogleFitDataSource[];
+  biometricFrame?: BiometricEngineFrame;
 }
 
 export interface WearableBatchDocument {
@@ -404,11 +484,25 @@ export type BiometricMetricType =
   | 'spo2'
   | 'stress'
   | 'readiness'
-  | 'sleep';
+  | 'sleep'
+  | 'respiratory_rate'
+  | 'skin_temp'
+  | 'blood_pressure_systolic'
+  | 'blood_pressure_diastolic'
+  | 'blood_glucose'
+  | 'distance'
+  | 'speed'
+  | 'hydration'
+  | 'weight'
+  | 'body_fat';
 
 export interface BiometricGraphPoint {
-  timestamp: string; // ISO
-  timeLabel: string; // e.g. "14:20"
+  timestamp: string; // Server ISO (UTC)
+  serverTime?: string; // Explicit Server UTC ISO timestamp
+  userLocalTime: string; // User Local ISO string translated by timezone
+  userTimeZone?: string; // e.g. "America/Los_Angeles"
+  timeLabel: string; // User local label (e.g. "22:15" or "10:15 PM")
+  serverTimeLabel?: string; // Server UTC label (e.g. "05:15 UTC")
   unixMs: number;
   value: number;
   normalizationLine: number; // Baseline computed on server
@@ -430,6 +524,9 @@ export interface BiometricBaselineMetric {
   stdDev: number;
   minNormal: number;
   maxNormal: number;
+  isRecordedFromGoogleFit?: boolean;
+  isInstantaneousScan?: boolean;
+  latestScanTimeLabel?: string;
 }
 
 export interface BiometricReadinessBreakdown {
@@ -446,6 +543,10 @@ export interface BiometricGraphNode {
   id: string;
   userId: string;
   timestamp: string;
+  serverTime?: string;
+  userLocalTime?: string;
+  userTimeZone?: string;
+  timeLabel?: string;
   metric: BiometricMetricType;
   value: number;
   normalizationLine: number;
@@ -472,6 +573,9 @@ export interface BiometricGraphEdge {
   weight: number; // 0.0 - 1.0 (correlation strength)
   description: string;
   timestamp: string;
+  serverTime?: string;
+  userLocalTime?: string;
+  userTimeZone?: string;
   createdAt: string;
 }
 
@@ -486,6 +590,9 @@ export interface BiometricCorrelationInsight {
 export interface BiometricEngineFrame {
   userId: string;
   updatedAt: string;
+  serverTime?: string;
+  userLocalTime?: string;
+  userTimeZone?: string;
   isLive: boolean;
   totalSamplesAnalyzed: number;
   currentVitals: Record<BiometricMetricType, BiometricBaselineMetric>;

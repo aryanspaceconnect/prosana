@@ -55,6 +55,27 @@ export function formatMetricValue(metric: BiometricMetricType, val: number): str
       return `${val.toFixed(1)}%`;
     case 'stress':
       return `${Math.round(val)} pts`;
+    case 'respiratory_rate':
+      return `${val.toFixed(1)} br/min`;
+    case 'skin_temp':
+      return `${val.toFixed(1)} °C`;
+    case 'blood_pressure_systolic':
+    case 'blood_pressure_diastolic':
+      return `${Math.round(val)} mmHg`;
+    case 'blood_glucose':
+      return `${val.toFixed(1)} mmol/L`;
+    case 'distance':
+      return val >= 1000 ? `${(val / 1000).toFixed(2)} km` : `${Math.round(val)} m`;
+    case 'speed':
+      return `${val.toFixed(1)} m/s`;
+    case 'hydration':
+      return `${val.toFixed(2)} L`;
+    case 'weight':
+      return `${val.toFixed(1)} kg`;
+    case 'body_fat':
+      return `${val.toFixed(1)}%`;
+    case 'sleep':
+      return `${Math.round(val)}/100`;
     default:
       return `${val}`;
   }
@@ -149,6 +170,106 @@ const METRIC_CONFIGS: Record<BiometricMetricType, {
     badgeBg: 'bg-indigo-50',
     badgeText: 'text-indigo-700',
     description: 'Nocturnal regeneration and stage architecture.'
+  },
+  respiratory_rate: {
+    label: 'Respiration Rate',
+    icon: 'solar:wind-bold-duotone',
+    lineColor: '#14b8a6',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#ccfbf1',
+    badgeBg: 'bg-teal-50',
+    badgeText: 'text-teal-700',
+    description: 'Spontaneous pulmonary breathing cycles per minute.'
+  },
+  skin_temp: {
+    label: 'Skin Temperature',
+    icon: 'solar:thermometer-bold-duotone',
+    lineColor: '#f97316',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#ffedd5',
+    badgeBg: 'bg-orange-50',
+    badgeText: 'text-orange-700',
+    description: 'Peripheral dermal thermoregulation.'
+  },
+  blood_pressure_systolic: {
+    label: 'Systolic BP',
+    icon: 'solar:heart-bold-duotone',
+    lineColor: '#ef4444',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#fee2e2',
+    badgeBg: 'bg-red-50',
+    badgeText: 'text-red-700',
+    description: 'Peak arterial pressure during ventricular contraction.'
+  },
+  blood_pressure_diastolic: {
+    label: 'Diastolic BP',
+    icon: 'solar:heart-angle-bold-duotone',
+    lineColor: '#dc2626',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#fecaca',
+    badgeBg: 'bg-rose-50',
+    badgeText: 'text-rose-700',
+    description: 'Baseline resting arterial pressure between beats.'
+  },
+  blood_glucose: {
+    label: 'Blood Glucose',
+    icon: 'solar:cup-bold-duotone',
+    lineColor: '#84cc16',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#ecfccb',
+    badgeBg: 'bg-lime-50',
+    badgeText: 'text-lime-700',
+    description: 'Capillary and interstitial glycemic concentration.'
+  },
+  distance: {
+    label: 'Distance Traveled',
+    icon: 'solar:map-point-wave-bold-duotone',
+    lineColor: '#3b82f6',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#dbeafe',
+    badgeBg: 'bg-blue-50',
+    badgeText: 'text-blue-700',
+    description: 'Total locomotive spatial displacement.'
+  },
+  speed: {
+    label: 'Movement Speed',
+    icon: 'solar:speedometer-middle-bold-duotone',
+    lineColor: '#0ea5e9',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#e0f2fe',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    description: 'Instantaneous ambulatory pacing velocity.'
+  },
+  hydration: {
+    label: 'Fluid Intake',
+    icon: 'solar:bottle-bold-duotone',
+    lineColor: '#0284c7',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#e0f2fe',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    description: 'Hydration and osmotic fluid balance volume.'
+  },
+  weight: {
+    label: 'Body Weight',
+    icon: 'solar:scale-bold-duotone',
+    lineColor: '#64748b',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#f1f5f9',
+    badgeBg: 'bg-slate-100',
+    badgeText: 'text-slate-700',
+    description: 'Total somatic mass tracked over time.'
+  },
+  body_fat: {
+    label: 'Body Fat %',
+    icon: 'solar:pie-chart-2-bold-duotone',
+    lineColor: '#a855f7',
+    baselineColor: '#cbd5e1',
+    fillGradStart: '#f3e8ff',
+    badgeBg: 'bg-purple-50',
+    badgeText: 'text-purple-700',
+    description: 'Adipose tissue percentage via bioimpedance analysis.'
   }
 };
 
@@ -160,6 +281,7 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
   isSyncing = false
 }) => {
   const [selectedMetric, setSelectedMetric] = useState<BiometricMetricType>('heart_rate');
+  const [metricCategory, setMetricCategory] = useState<'all' | 'cardio' | 'activity' | 'clinical' | 'body'>('all');
   const [frame, setFrame] = useState<BiometricEngineFrame | null>(initialFrame || null);
   const [isLiveAutoSync, setIsLiveAutoSync] = useState<boolean>(true);
   const [secondsUntilNextSync, setSecondsUntilNextSync] = useState<number>(60);
@@ -167,11 +289,36 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
   const [showReadinessExplainer, setShowReadinessExplainer] = useState<boolean>(false);
   const [isFetchingLive, setIsFetchingLive] = useState<boolean>(false);
 
-  // Fetch Live Frame from server computation engine
+  const ALL_METRIC_KEYS: BiometricMetricType[] = [
+    'heart_rate', 'steps', 'calories', 'hrv', 'readiness', 'stress', 'spo2', 'sleep',
+    'respiratory_rate', 'skin_temp', 'blood_pressure_systolic', 'blood_pressure_diastolic',
+    'blood_glucose', 'distance', 'speed', 'hydration', 'weight', 'body_fat'
+  ];
+
+  const CATEGORY_MAP: Record<string, BiometricMetricType[]> = {
+    all: ALL_METRIC_KEYS,
+    cardio: ['heart_rate', 'hrv', 'readiness', 'stress', 'spo2', 'respiratory_rate'],
+    activity: ['steps', 'calories', 'distance', 'speed'],
+    clinical: ['blood_pressure_systolic', 'blood_pressure_diastolic', 'blood_glucose', 'skin_temp'],
+    body: ['sleep', 'hydration', 'weight', 'body_fat']
+  };
+
+  const displayedMetricKeys = CATEGORY_MAP[metricCategory] || ALL_METRIC_KEYS;
+
+  // Client-side resolved timezone
+  const userTimeZone = typeof Intl !== 'undefined' && Intl.DateTimeFormat
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+    : 'UTC';
+
+  // Fetch Live Frame from server computation engine with user timezone context
   const fetchLiveFrame = async () => {
     try {
       setIsFetchingLive(true);
-      const res = await fetch(`/api/wearables/biometric-engine/live-frame/${userId || 'guest_user'}`);
+      const res = await fetch(`/api/wearables/biometric-engine/live-frame/${userId || 'guest_user'}?timeZone=${encodeURIComponent(userTimeZone)}`, {
+        headers: {
+          'x-user-timezone': userTimeZone
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.frame) {
@@ -221,7 +368,7 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* 1. Header Control Bar: 1-Minute Live Sync Switch & Manual Refresh */}
+      {/* 1. Header Control Bar: 1-Minute Live Sync Switch & Manual Refresh with Dual Timezone indicator */}
       <div className="p-3 sm:p-4 rounded-2xl bg-slate-900 text-white flex items-center justify-between flex-wrap gap-3 shadow-md">
         <div className="flex items-center space-x-2.5">
           <div className="relative flex items-center justify-center">
@@ -231,17 +378,21 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
             )}
           </div>
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-wrap">
               <span className="text-xs font-bold tracking-tight">
                 {isLiveAutoSync ? 'Real-Time Biometric Engine' : 'Sync Paused'}
               </span>
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white/10 text-slate-200">
                 Server-Calculated Baselines
               </span>
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center space-x-1">
+                <Icon icon="solar:clock-circle-bold" className="w-3 h-3" />
+                <span>User Local Time ({userTimeZone})</span>
+              </span>
             </div>
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-slate-400 mt-0.5">
               {isLiveAutoSync 
-                ? `Next automatic refresh in ${secondsUntilNextSync}s` 
+                ? `Next automatic refresh in ${secondsUntilNextSync}s • Aligned to user local timeline` 
                 : '1-minute auto refresh is paused'}
             </p>
           </div>
@@ -285,48 +436,94 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
         </div>
       </div>
 
-      {/* 2. Metric Selector Chips (Horizontal Scrollable) */}
-      <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {(['heart_rate', 'steps', 'calories', 'hrv', 'readiness', 'stress'] as BiometricMetricType[]).map(mKey => {
-          const isSelected = selectedMetric === mKey;
-          const mCfg = METRIC_CONFIGS[mKey];
-          const vit = frame?.currentVitals?.[mKey];
+      {/* 2. Metric Category Filter & Chips */}
+      <div className="space-y-2">
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none text-xs font-semibold">
+          {[
+            { id: 'all', label: 'All Metrics (18)' },
+            { id: 'cardio', label: 'Cardio & Recovery' },
+            { id: 'activity', label: 'Activity & Movement' },
+            { id: 'clinical', label: 'Clinical & Vitals' },
+            { id: 'body', label: 'Body & Sleep' }
+          ].map(cat => {
+            const isCatActive = metricCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setMetricCategory(cat.id as any)}
+                className={`px-3 py-1 rounded-xl transition-all cursor-pointer whitespace-nowrap text-xs ${
+                  isCatActive
+                    ? 'bg-slate-900 text-white font-bold shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
 
-          return (
-            <button
-              key={mKey}
-              onClick={() => setSelectedMetric(mKey)}
-              className={`px-3 py-2 rounded-2xl border text-left transition-all cursor-pointer shrink-0 flex items-center space-x-2.5 ${
-                isSelected
-                  ? 'bg-white border-slate-900 shadow-md ring-1 ring-slate-900 text-slate-900'
-                  : 'bg-slate-50/80 border-slate-200/80 text-slate-600 hover:bg-white hover:border-slate-300'
-              }`}
-            >
-              <div className={`p-1.5 rounded-xl ${mCfg.badgeBg} ${mCfg.badgeText}`}>
-                <Icon icon={mCfg.icon} className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500">
-                  {mCfg.label}
-                </span>
-                <span className="text-xs font-extrabold text-slate-900">
-                  {vit ? formatMetricValue(mKey, vit.currentValue) : '—'}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
+          {displayedMetricKeys.map(mKey => {
+            const isSelected = selectedMetric === mKey;
+            const mCfg = METRIC_CONFIGS[mKey];
+            const vit = frame?.currentVitals?.[mKey];
+
+            return (
+              <button
+                key={mKey}
+                onClick={() => setSelectedMetric(mKey)}
+                className={`px-3 py-2 rounded-2xl border text-left transition-all cursor-pointer shrink-0 flex items-center space-x-2.5 ${
+                  isSelected
+                    ? 'bg-white border-slate-900 shadow-md ring-1 ring-slate-900 text-slate-900'
+                    : 'bg-slate-50/80 border-slate-200/80 text-slate-600 hover:bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl relative ${mCfg.badgeBg} ${mCfg.badgeText}`}>
+                  <Icon icon={mCfg.icon} className="w-4 h-4" />
+                  {vit?.isRecordedFromGoogleFit && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white" title="Recorded live from Google Fit" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center space-x-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-500 whitespace-nowrap">
+                      {mCfg.label}
+                    </span>
+                  </div>
+                  <span className="text-xs font-extrabold text-slate-900 whitespace-nowrap">
+                    {vit ? formatMetricValue(mKey, vit.currentValue) : '—'}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* 3. Primary Aesthetic Line Graph Card with Normalization Line */}
       <div className="p-4 sm:p-5 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-4">
         {/* Metric Header & Normalization Delta Summary */}
-        <div className="flex items-start justify-between flex-wrap gap-2">
+        <div className="flex items-start justify-between flex-wrap gap-2 border-b border-slate-100 pb-3">
           <div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-wrap gap-1">
               <h4 className="text-base font-bold text-slate-900">
-                {cfg.label} Timeline & Normalization Corridor
+                {cfg.label} {currentMetricData?.isInstantaneousScan ? 'Instantaneous Scan & Stream' : 'Timeline'}
               </h4>
+              
+              {/* Google Fit Connection Status Badge */}
+              {currentMetricData?.isRecordedFromGoogleFit ? (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>Google Fit Live API</span>
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-500 border border-slate-200 flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                  <span>No Watch Sensor Log Recorded Today</span>
+                </span>
+              )}
+
               {currentMetricData && (
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                   currentMetricData.status === 'optimal' 
@@ -339,7 +536,28 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
                 </span>
               )}
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            
+            {/* Callout if instantaneous scan is active */}
+            {currentMetricData?.isInstantaneousScan && (
+              <div className="mt-1.5 p-2 rounded-xl bg-rose-50/80 border border-rose-200/60 text-rose-900 text-xs flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Icon icon="solar:heart-pulse-bold" className="w-4 h-4 text-rose-600 animate-pulse" />
+                  <span>
+                    <strong>Instantaneous Watch Scan:</strong> Real-time reading from Google Fit stream
+                  </span>
+                </div>
+                <span className="font-extrabold text-sm text-rose-700 bg-white px-2 py-0.5 rounded-lg border border-rose-200 shadow-xs">
+                  {currentMetricData.currentValue} BPM
+                  {currentMetricData.latestScanTimeLabel && (
+                    <span className="text-[10px] font-normal text-rose-500 ml-1">
+                      ({currentMetricData.latestScanTimeLabel})
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+
+            <p className="text-xs text-slate-500 mt-1">
               {cfg.description}
             </p>
           </div>
@@ -348,7 +566,9 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
           {currentMetricData && (
             <div className="flex items-center space-x-2">
               <div className="px-2.5 py-1 rounded-xl bg-slate-100 text-slate-700 text-xs font-semibold">
-                <span className="text-slate-400 mr-1 text-[10px] uppercase font-bold">Norm Baseline:</span>
+                <span className="text-slate-400 mr-1 text-[10px] uppercase font-bold">
+                  {currentMetricData.isInstantaneousScan ? 'Day Baseline:' : 'Norm Baseline:'}
+                </span>
                 <strong>{formatMetricValue(selectedMetric, currentMetricData.baseline)}</strong>
               </div>
 
@@ -408,16 +628,26 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
                     if (active && payload && payload.length) {
                       const data = payload[0].payload as BiometricGraphPoint;
                       return (
-                        <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl border border-slate-700 text-xs space-y-1.5">
-                          <div className="flex items-center justify-between border-b border-slate-800 pb-1">
-                            <span className="font-bold text-slate-300">{data.timeLabel}</span>
+                        <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl border border-slate-700 text-xs space-y-1.5 min-w-[200px]">
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                            <div>
+                              <div className="flex items-center space-x-1.5">
+                                <span className="font-bold text-white text-sm">{data.timeLabel}</span>
+                                <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Local</span>
+                              </div>
+                              {data.serverTimeLabel && (
+                                <span className="text-[10px] text-slate-400 block font-mono">
+                                  Server UTC: {data.serverTimeLabel}
+                                </span>
+                              )}
+                            </div>
                             {data.isAnomaly && (
                               <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9.5px] font-bold border border-rose-500/30">
                                 Anomaly Peak
                               </span>
                             )}
                           </div>
-                          <div className="flex items-baseline justify-between space-x-3">
+                          <div className="flex items-baseline justify-between space-x-3 pt-0.5">
                             <span className="text-slate-400">Actual:</span>
                             <span className="font-extrabold text-white text-sm">
                               {formatMetricValue(selectedMetric, data.value)}

@@ -784,35 +784,35 @@ export async function fetchAdvancedEnvironmentalData(args: FetchAdvancedEnvironm
   if (aq) {
     if (aq.pm25 > 25 || aq.pm10 > 50 || aq.no2 > 20) {
       triggers.cleansingEmphasis = true;
-      triggers.summaryGuidance.push(`High particulate pollution (PM2.5: ${aq.pm25} µg/m³, PM10: ${aq.pm10} µg/m³) — double cleansing & salicylic acid/clay pore detox recommended tonight.`);
+      triggers.summaryGuidance.push(`High particulate pollution (PM2.5: ${aq.pm25} µg/m³, PM10: ${aq.pm10} µg/m³) — restrict high-intensity outdoor exercise to protect respiratory comfort.`);
     }
     if (aq.ozone > 40 || aq.usAqi > 100) {
       triggers.antioxidantBias = true;
-      triggers.summaryGuidance.push(`Elevated ground-level ozone (${aq.ozone} µg/m³) & AQI (${aq.usAqi}) — layer L-ascorbic acid / Niacinamide antioxidant shield against reactive oxidative stress.`);
+      triggers.summaryGuidance.push(`Elevated ground-level ozone (${aq.ozone} µg/m³) & AQI (${aq.usAqi}) — monitor resting heart rate and stay well hydrated during outdoor walks.`);
     }
     if (aq.pollen && aq.pollen.totalPollenGrains > 20) {
       triggers.pollenIrritationAlert = true;
-      triggers.summaryGuidance.push(`Elevated pollen levels (${aq.pollen.totalPollenGrains} grains/m³) — periocular irritation risk; rinse face with thermal water post-outdoors.`);
+      triggers.summaryGuidance.push(`Elevated pollen levels (${aq.pollen.totalPollenGrains} grains/m³) — air quality sensitivity risk; consider indoor movement options today.`);
     }
   }
 
   if (curr.precipitationProbability12hMaxPercent > 40 || curr.vpdKpa < 0.5) {
     triggers.reapplyBlotWarning = true;
-    triggers.summaryGuidance.push(`High rain chance (${curr.precipitationProbability12hMaxPercent}%) / muggy VPD (${curr.vpdKpa} kPa) — sweat/water reapplication of sunscreen required; use oil-blotting paper.`);
+    triggers.summaryGuidance.push(`High rain chance (${curr.precipitationProbability12hMaxPercent}%) / humid VPD (${curr.vpdKpa} kPa) — thermoregulation relies on steady hydration; replenish fluids.`);
   }
 
   if (curr.windSpeedKmH > 15 || curr.windGustsKmH > 25 || curr.vpdKpa > 1.5) {
     triggers.barrierDrynessWarning = true;
-    triggers.summaryGuidance.push(`High wind currents (${curr.windSpeedKmH} km/h, gusts ${curr.windGustsKmH} km/h) & dry VPD (${curr.vpdKpa} kPa) — accelerated transepidermal water loss (TEWL); apply lipid barrier cream & lip occlusive.`);
+    triggers.summaryGuidance.push(`High wind currents (${curr.windSpeedKmH} km/h, gusts ${curr.windGustsKmH} km/h) & dry air — accelerated hydration loss; increase fluid intake.`);
   }
 
   if (curr.cloudCoverPercent > 40 && response.solarRadiationAndClouds?.uvIndexMaxToday && response.solarRadiationAndClouds.uvIndexMaxToday > 3) {
     triggers.cloudyUvWarning = true;
-    triggers.summaryGuidance.push(`Overcast skies (${curr.cloudCoverPercent}% cloud cover) do not block UV radiation (Max UV: ${response.solarRadiationAndClouds.uvIndexMaxToday}) — clouds aren't safety!`);
+    triggers.summaryGuidance.push(`Overcast skies (${curr.cloudCoverPercent}% cloud cover) with peak UV (${response.solarRadiationAndClouds.uvIndexMaxToday}) — pace outdoor exertion and stay hydrated.`);
   }
 
   if (triggers.summaryGuidance.length === 0) {
-    triggers.summaryGuidance.push(`Favorable environmental conditions in ${cityLabel}. Maintain baseline daily SPF and barrier moisturizer.`);
+    triggers.summaryGuidance.push(`Favorable environmental conditions in ${cityLabel}. Ideal window for outdoor walking and light aerobic movement.`);
   }
 
   return response;

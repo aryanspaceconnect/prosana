@@ -821,14 +821,22 @@ export const AIAgentChat: React.FC<AIAgentChatProps> = ({
           : `Please analyze the attached image/file(s):\n${attachmentDetails}`;
       }
 
+      const clientTimeZone = typeof Intl !== 'undefined' && Intl.DateTimeFormat
+        ? Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+        : 'UTC';
+
       const response = await fetch('/api/sana', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-timezone': clientTimeZone
+        },
         signal: controller.signal,
         body: JSON.stringify({
           userId,
           message: apiMessageText,
           sessionId: activeSessionId,
+          userTimeZone: clientTimeZone,
           attachments: currentAttachments,
           history: updatedMessages.map(m => ({
             role: m.role,

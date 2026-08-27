@@ -80,6 +80,7 @@ export interface UniversalQuery {
 export interface AgentContext {
   userId: string;
   sessionId: string;
+  userTimeZone?: string;
   profile?: any;
   latestScan?: any;
   incidents?: any[];
@@ -122,6 +123,7 @@ export interface AgentRunParams {
   message: string;
   sessionId?: string;
   systemPrompt?: string;
+  userTimeZone?: string;
   attachments?: Array<{ id: string; name: string; type: 'image' | 'document'; url: string; mimeType?: string; textContent?: string }>;
   history?: Array<{ role: 'user' | 'model'; text: string; attachments?: any[] }>;
   onProgress?: (interimText: string) => void;

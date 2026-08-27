@@ -206,59 +206,105 @@ export const proposeUpdateSettingTool: ToolDefinition = {
 };
 
 // Propose Create Event Tool
-export const proposeCreateEventSchema = z.object({
+export const proposeCreateEventSchema = z.preprocess((val: any) => {
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    const raw = { ...val };
+    const title = raw.title || raw.event_title || raw.name || raw.summary || raw.event || 'Calendar Event';
+    const notes = raw.notes || raw.event_description || raw.description || raw.details || '';
+    let category = raw.category || raw.event_category || 'routine';
+    if (typeof category === 'string') {
+      const cleanCat = category.toLowerCase().trim();
+      if (['routine', 'scan', 'treatment', 'habit', 'wellness'].includes(cleanCat)) {
+        category = cleanCat;
+      } else {
+        category = 'routine';
+      }
+    }
+
+    let date = raw.date;
+    let time = raw.time;
+    const sched = raw.scheduled_time || raw.scheduledAt || raw.datetime || raw.timestamp || raw.start_time;
+
+    if (!date && sched && typeof sched === 'string') {
+      const trimmed = sched.trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+        date = trimmed;
+      } else {
+        const parsed = new Date(trimmed);
+        if (!isNaN(parsed.getTime())) {
+          date = parsed.toISOString().split('T')[0];
+          time = parsed.toTimeString().substring(0, 5);
+        }
+      }
+    }
+
+    if (!date && typeof raw.date === 'string') {
+      const trimmedDate = raw.date.trim();
+      if (trimmedDate.toLowerCase() === 'today') {
+        date = new Date().toISOString().split('T')[0];
+      } else if (trimmedDate.toLowerCase() === 'tomorrow') {
+        date = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      } else {
+        const parsed = new Date(trimmedDate);
+        if (!isNaN(parsed.getTime())) {
+          date = parsed.toISOString().split('T')[0];
+        }
+      }
+    }
+
+    if (!date) {
+      date = new Date().toISOString().split('T')[0];
+    }
+    if (!time) {
+      time = '20:00';
+    }
+
+    return {
+      title,
+      date,
+      time,
+      category,
+      notes,
+      reminder: raw.reminder ?? true
+    };
+  }
+  return val;
+}, z.object({
   title: z.string().describe('Title of the event e.g. "PM Barrier Restoration Routine" or "Post-Peel Check"'),
-  date: z.preprocess((val) => {
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
-      const now = new Date();
-      if (trimmed.toLowerCase() === 'today') return now.toISOString().split('T')[0];
-      if (trimmed.toLowerCase() === 'tomorrow') {
-        const tmrw = new Date(now.getTime() + 86400000);
-        return tmrw.toISOString().split('T')[0];
-      }
-      const parsed = new Date(trimmed);
-      if (!isNaN(parsed.getTime())) {
-        return parsed.toISOString().split('T')[0];
-      }
-    }
-    return new Date().toISOString().split('T')[0];
-  }, z.string().describe('Target date YYYY-MM-DD (e.g. 2026-08-15) or relative terms like "today" or "tomorrow"')),
-  time: z.preprocess((val) => {
-    if (typeof val === 'string' && val.trim()) return val.trim();
-    return '20:00';
-  }, z.string().optional().default('20:00')).describe('Scheduled time e.g. "20:30" or "08:00 AM"'),
-  category: z.preprocess((val) => {
-    if (typeof val === 'string') {
-      const clean = val.toLowerCase().trim();
-      if (['routine', 'scan', 'treatment', 'habit', 'wellness'].includes(clean)) return clean;
-    }
-    return 'routine';
-  }, z.enum(['routine', 'scan', 'treatment', 'habit', 'wellness']).optional().default('routine')).describe('Category classification for the calendar event'),
-  notes: z.preprocess((val) => typeof val === 'string' ? val : undefined, z.string().optional()).describe('Detailed instructions, active products, reminders, or protocol steps'),
-  reminder: z.preprocess((val) => val === true || val === 'true' || val === undefined, z.boolean().optional().default(true)).describe('Whether an active reminder alert should be set')
-});
+  date: z.string().describe('Target date YYYY-MM-DD (e.g. 2026-08-15) or relative terms like "today" or "tomorrow"'),
+  time: z.string().describe('Scheduled time e.g. "20:30" or "08:00 AM"'),
+  category: z.enum(['routine', 'scan', 'treatment', 'habit', 'wellness']).default('routine').describe('Category classification for the calendar event'),
+  notes: z.string().optional().describe('Detailed instructions, active products, reminders, or protocol steps'),
+  reminder: z.boolean().optional().default(true).describe('Whether an active reminder alert should be set')
+}));
 
 export const proposeCreateEventTool: ToolDefinition = {
   name: 'propose_create_event',
-  description: 'Propose scheduling a skincare routine, facial scan, treatment session, or reminder in the Regimen Calendar. Supports picking dates, custom times, notes, reminders, and categories.',
+  description: 'Propose scheduling a skincare routine, facial scan, treatment session, product demonstration, or reminder in the Regimen Calendar. Supports picking dates, custom times, notes, reminders, and categories.',
   parameters: proposeCreateEventSchema,
-  execute: async (args: z.infer<typeof proposeCreateEventSchema>): Promise<{ proposal: ActionProposal }> => {
+  execute: async (args: any): Promise<{ proposal: ActionProposal }> => {
+    const title = args?.title || args?.event_title || args?.name || 'Calendar Event';
+    const categoryRaw = typeof args?.category === 'string' ? args.category : 'routine';
+    const category = (categoryRaw || 'routine').toLowerCase();
+    const date = args?.date || new Date().toISOString().split('T')[0];
+    const time = args?.time || '20:00';
+    const notes = args?.notes || args?.event_description || args?.description || '';
+    const reminder = args?.reminder ?? true;
+
     const actionId = `prop_evt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     return {
       proposal: {
         actionId,
-        title: `Schedule Calendar Event: ${args.title}`,
-        description: `Schedule '${args.title}' (${args.category.toUpperCase()}) on ${args.date} at ${args.time || '20:00'}. ${args.notes ? `Notes: ${args.notes}` : ''}`,
+        title: `Schedule Calendar Event: ${title}`,
+        description: `Schedule '${title}' (${category.toUpperCase()}) on ${date} at ${time}. ${notes ? `Notes: ${notes}` : ''}`,
         actionType: 'CREATE_EVENT',
         payload: {
-          title: args.title,
-          date: args.date,
-          time: args.time || '20:00',
-          category: args.category,
-          notes: args.notes || '',
-          reminder: args.reminder ?? true,
+          title,
+          date,
+          time,
+          category,
+          notes,
+          reminder,
           completed: false
         },
         riskLevel: 'low'
@@ -279,23 +325,29 @@ export const proposeLogIncidentTool: ToolDefinition = {
   name: 'propose_log_incident',
   description: 'Propose logging a skin reaction or flare-up incident to track causes and recovery progress over time. Returns an actionProposal requiring user approval.',
   parameters: proposeLogIncidentSchema,
-  execute: async (args: z.infer<typeof proposeLogIncidentSchema>): Promise<{ proposal: ActionProposal }> => {
+  execute: async (args: any): Promise<{ proposal: ActionProposal }> => {
+    const title = args?.title || args?.incident_title || 'Skin Incident';
+    const severityRaw = typeof args?.severity === 'string' ? args.severity : 'mild';
+    const severity = (severityRaw || 'mild').toLowerCase();
+    const triggers = Array.isArray(args?.triggers) ? args.triggers : [];
+    const description = args?.description || args?.notes || '';
+
     const actionId = `prop_inc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     return {
       proposal: {
         actionId,
-        title: `Log Reaction Incident: ${args.title}`,
-        description: `Log skin incident '${args.title}' with severity '${args.severity.toUpperCase()}'. Triggers: ${args.triggers?.join(', ') || 'None specified'}.`,
+        title: `Log Reaction Incident: ${title}`,
+        description: `Log skin incident '${title}' with severity '${severity.toUpperCase()}'. Triggers: ${triggers.join(', ') || 'None specified'}.`,
         actionType: 'LOG_INCIDENT',
         payload: {
-          title: args.title,
-          severity: args.severity,
-          triggers: args.triggers || [],
-          description: args.description || '',
+          title,
+          severity,
+          triggers,
+          description,
           timestamp: new Date().toISOString(),
           status: 'active'
         },
-        riskLevel: args.severity === 'severe' ? 'medium' : 'low'
+        riskLevel: severity === 'severe' ? 'medium' : 'low'
       }
     };
   }
@@ -316,17 +368,20 @@ export const proposeGenerateProtocolTool: ToolDefinition = {
   name: 'propose_generate_protocol',
   description: 'Propose updating or adding a structured multi-step skincare regimen protocol. Returns an actionProposal requiring user approval.',
   parameters: proposeGenerateProtocolSchema,
-  execute: async (args: z.infer<typeof proposeGenerateProtocolSchema>): Promise<{ proposal: ActionProposal }> => {
+  execute: async (args: any): Promise<{ proposal: ActionProposal }> => {
+    const title = args?.title || 'Skincare Protocol';
+    const steps = Array.isArray(args?.steps) ? args.steps : [];
+
     const actionId = `prop_proto_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     return {
       proposal: {
         actionId,
-        title: `Apply Skincare Protocol: ${args.title}`,
-        description: `Adopt ${args.steps.length}-step skin protocol '${args.title}' targeting barrier repair and routine clarity.`,
+        title: `Apply Skincare Protocol: ${title}`,
+        description: `Adopt ${steps.length}-step skin protocol '${title}' targeting barrier repair and routine clarity.`,
         actionType: 'GENERATE_PROTOCOL',
         payload: {
-          title: args.title,
-          steps: args.steps,
+          title,
+          steps,
           createdAt: new Date().toISOString()
         },
         riskLevel: 'medium'
@@ -473,20 +528,40 @@ export const saveVaultIncidentTool: ToolDefinition = {
 };
 
 // Save Vault Event Tool
-export const saveVaultEventSchema = z.object({
+export const saveVaultEventSchema = z.preprocess((val: any) => {
+  if (val && typeof val === 'object' && !Array.isArray(val)) {
+    const raw = { ...val };
+    const title = raw.title || raw.event_title || raw.name || raw.summary || raw.event || 'Calendar Event';
+    const scheduledAt = raw.scheduledAt || raw.scheduled_time || raw.date || raw.datetime || raw.timestamp || raw.start_time || new Date().toISOString();
+    return {
+      title,
+      scheduledAt,
+      category: raw.category || raw.event_category || 'routine',
+      preparationProtocolId: raw.preparationProtocolId || raw.protocolId,
+      outcomeNotes: raw.outcomeNotes || raw.notes || raw.description || ''
+    };
+  }
+  return val;
+}, z.object({
   title: z.string(),
   scheduledAt: z.string().optional(), // Absolute or relative (e.g. 'tomorrow', '2026-08-10')
   category: z.string().optional().default('routine'),
   preparationProtocolId: z.string().optional(),
   outcomeNotes: z.string().optional()
-});
+}));
 
 export const saveVaultEventTool: ToolDefinition = {
   name: 'save_vault_event',
   description: 'Record a calendar regimen event or milestone in Vault with state machine status tracking (upcoming, today, completed, missed).',
   parameters: saveVaultEventSchema,
-  execute: async (args: z.infer<typeof saveVaultEventSchema>, context: AgentContext) => {
-    const saved = await saveVaultEvent(context.userId, args, 'sana');
+  execute: async (args: any, context: AgentContext) => {
+    const title = args?.title || args?.event_title || args?.name || 'Calendar Event';
+    const safeArgs = {
+      ...args,
+      title,
+      category: args?.category || 'routine'
+    };
+    const saved = await saveVaultEvent(context.userId, safeArgs, 'sana');
     return {
       success: true,
       message: `Event '${saved.title}' created in Vault (status: ${saved.status}, date: ${saved.scheduledAtDate}).`,

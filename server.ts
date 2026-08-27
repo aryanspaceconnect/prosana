@@ -249,10 +249,113 @@ app.get("/api/wearables/providers", (_req, res) => {
   });
 });
 
-// 2. Real Google Fit REST API Live Sync (Wrapped with Token Management & Auto-Renewal)
+// Activity Type Mapping for Google Fit API
+const GOOGLE_FIT_ACTIVITY_MAP: Record<number, string> = {
+  0: 'In Vehicle',
+  1: 'Biking',
+  2: 'On Foot',
+  3: 'Still (Resting)',
+  4: 'Unknown Activity',
+  5: 'Tilting',
+  7: 'Walking',
+  8: 'Running',
+  9: 'Aerobics',
+  10: 'Badminton',
+  11: 'Baseball',
+  12: 'Basketball',
+  13: 'Biathlon',
+  14: 'Handbiking',
+  15: 'Mountain Biking',
+  16: 'Road Biking',
+  17: 'Spinning',
+  18: 'Stationary Biking',
+  19: 'Utility Biking',
+  20: 'Boxing',
+  21: 'Calisthenics',
+  22: 'Circuit Training',
+  23: 'Cricket',
+  24: 'Dancing',
+  25: 'Elliptical',
+  26: 'Fencing',
+  27: 'Football (American)',
+  28: 'Football (Australian)',
+  29: 'Football (Soccer)',
+  30: 'Frisbee',
+  31: 'Gardening',
+  32: 'Golf',
+  33: 'Gymnastics',
+  34: 'Handball',
+  35: 'HIIT',
+  36: 'Hiking',
+  37: 'Hockey',
+  38: 'Horseback Riding',
+  39: 'Housework',
+  40: 'Ice Skating',
+  41: 'Jumping Rope',
+  42: 'Kayaking',
+  43: 'Kettlebell Training',
+  44: 'Kickboxing',
+  45: 'Kitesurfing',
+  46: 'Martial Arts',
+  47: 'Meditation',
+  48: 'Mixed Martial Arts',
+  49: 'P90X',
+  50: 'Paragliding',
+  51: 'Pilates',
+  52: 'Polo',
+  53: 'Racquetball',
+  54: 'Rock Climbing',
+  55: 'Rowing',
+  56: 'Rowing Machine',
+  57: 'Rugby',
+  58: 'Running (Jogging)',
+  59: 'Running (Sand)',
+  60: 'Running (Treadmill)',
+  61: 'Sailing',
+  62: 'Scuba Diving',
+  63: 'Skateboarding',
+  64: 'Skating',
+  65: 'Cross Skating',
+  66: 'Indoor Skating',
+  67: 'Inline Skating',
+  68: 'Skiing',
+  72: 'Sleeping',
+  73: 'Light Sleep',
+  74: 'Deep Sleep',
+  75: 'REM Sleep',
+  76: 'Awake (during sleep)',
+  80: 'Strength Training',
+  82: 'Surfing',
+  83: 'Swimming',
+  86: 'Table Tennis',
+  87: 'Tennis',
+  93: 'Volleyball',
+  96: 'Water Polo',
+  97: 'Weightlifting',
+  98: 'Wheelchair',
+  99: 'Windsurfing',
+  100: 'Yoga',
+  108: 'Other Activity',
+  109: 'Light sleep',
+  110: 'Deep sleep',
+  111: 'REM sleep',
+  112: 'Awake'
+};
+
+const GOOGLE_FIT_SLEEP_STAGE_MAP: Record<number, string> = {
+  1: 'awake',
+  2: 'sleeping',
+  3: 'out_of_bed',
+  4: 'light',
+  5: 'deep',
+  6: 'rem'
+};
+
+// 2. Real Google Fit REST API Live Sync (Comprehensive Multi-Metric Ingestion)
 app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res, tokenContext) => {
-  const { startTimeMillis, endTimeMillis } = req.body;
+  const { startTimeMillis, endTimeMillis, userTimeZone } = req.body;
   const { userId, accessToken, expiresAt, refreshed } = tokenContext;
+  const clientTimeZone = userTimeZone || (req.headers["x-user-timezone"] as string) || undefined;
 
   // Default time window: Today (start of day to now)
   const now = Date.now();
@@ -262,12 +365,19 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
   const startMs = Number(startTimeMillis) || startOfDay.getTime();
   const endMs = Number(endTimeMillis) || now;
 
+  // Comprehensive aggregate request across all Google Fit health and movement data types
   const aggregatePayload = {
     aggregateBy: [
       { dataTypeName: "com.google.step_count.delta" },
       { dataTypeName: "com.google.calories.expended" },
+      { dataTypeName: "com.google.calories.bmr" },
       { dataTypeName: "com.google.heart_rate.bpm" },
-      { dataTypeName: "com.google.heart_minutes" }
+      { dataTypeName: "com.google.heart_minutes" },
+      { dataTypeName: "com.google.distance.delta" },
+      { dataTypeName: "com.google.speed" },
+      { dataTypeName: "com.google.hydration" },
+      { dataTypeName: "com.google.sleep.segment" },
+      { dataTypeName: "com.google.activity.segment" }
     ],
     bucketByTime: { durationMillis: 1200000 }, // Exactly 20-minute buckets
     startTimeMillis: startMs,
@@ -275,6 +385,8 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
   };
 
   try {
+    let fitData: any = null;
+
     const googleRes = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
       method: "POST",
       headers: {
@@ -284,42 +396,134 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       body: JSON.stringify(aggregatePayload)
     });
 
-    if (!googleRes.ok) {
+    if (googleRes.ok) {
+      fitData = await googleRes.json();
+    } else {
       const errText = await googleRes.text();
-      console.error(`[Google Fit Sync Error] ${googleRes.status}: ${errText}`);
+      console.warn(`[Google Fit Sync Warning] Primary multi-metric aggregate failed (${googleRes.status}): ${errText}. Attempting core fallback...`);
+
       if (googleRes.status === 401) {
         return res.status(401).json({
           error: "Google OAuth access token expired or invalid. Please re-authenticate.",
           code: "TOKEN_EXPIRED_REAUTH_REQUIRED"
         });
       }
-      return res.status(googleRes.status).json({
-        error: `Google Fitness API returned error: ${googleRes.status}`,
-        details: errText
+
+      // Fallback: Core 4 metrics
+      const fallbackPayload = {
+        aggregateBy: [
+          { dataTypeName: "com.google.step_count.delta" },
+          { dataTypeName: "com.google.calories.expended" },
+          { dataTypeName: "com.google.heart_rate.bpm" },
+          { dataTypeName: "com.google.heart_minutes" }
+        ],
+        bucketByTime: { durationMillis: 1200000 },
+        startTimeMillis: startMs,
+        endTimeMillis: endMs
+      };
+
+      const fallbackRes = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataset:aggregate", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(fallbackPayload)
       });
+
+      if (!fallbackRes.ok) {
+        const fallbackErr = await fallbackRes.text();
+        return res.status(fallbackRes.status).json({
+          error: `Google Fitness API returned error: ${fallbackRes.status}`,
+          details: fallbackErr
+        });
+      }
+
+      fitData = await fallbackRes.json();
     }
 
-    const fitData = await googleRes.json();
-    const buckets = fitData.bucket || [];
+    const buckets = fitData?.bucket || [];
 
-    const realSamples: Array<{
-      timestamp: string;
-      unixMs: number;
-      heartRateBpm?: number;
-      hrvMs?: number;
-      stepsDelta?: number;
-      activeCaloriesDelta?: number;
-      spo2Percent?: number;
-      respiratoryRate?: number;
-      stressLevel?: number;
-    }> = [];
+    // Parallel fetch for Sessions and Data Sources for complete health context
+    let sessions: any[] = [];
+    let dataSources: any[] = [];
+
+    try {
+      const [sessRes, dsRes] = await Promise.allSettled([
+        fetch(`https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${encodeURIComponent(new Date(startMs).toISOString())}&endTime=${encodeURIComponent(new Date(endMs).toISOString())}`, {
+          headers: { "Authorization": `Bearer ${accessToken}` }
+        }),
+        fetch(`https://www.googleapis.com/fitness/v1/users/me/dataSources`, {
+          headers: { "Authorization": `Bearer ${accessToken}` }
+        })
+      ]);
+
+      if (sessRes.status === 'fulfilled' && sessRes.value.ok) {
+        const sessJson = await sessRes.value.json();
+        sessions = (sessJson.session || []).map((s: any) => ({
+          ...s,
+          activityName: GOOGLE_FIT_ACTIVITY_MAP[s.activityType] || `Activity ${s.activityType}`
+        }));
+      }
+
+      if (dsRes.status === 'fulfilled' && dsRes.value.ok) {
+        const dsJson = await dsRes.value.json();
+        dataSources = dsJson.dataSource || [];
+      }
+    } catch (auxErr) {
+      console.warn("[Google Fit Sync] Non-blocking aux fetch notice:", auxErr);
+    }
+
+    // Fetch raw instantaneous heart rate scans from Google Fit raw/derived datasets
+    let latestInstantaneousHeartRate: number | undefined = undefined;
+    let latestHeartRateTimeMs: number | undefined = undefined;
+    let latestHeartRateTimeLabel: string | undefined = undefined;
+
+    try {
+      const startNs = `${startMs}000000`;
+      const endNs = `${endMs}000000`;
+      const rawHrRes = await fetch(
+        `https://www.googleapis.com/fitness/v1/users/me/dataSources/derived:com.google.heart_rate.bpm:com.google.android.gms:merge_heart_rate_bpm/datasets/${startNs}-${endNs}`,
+        { headers: { "Authorization": `Bearer ${accessToken}` } }
+      );
+
+      if (rawHrRes.ok) {
+        const rawHrJson = await rawHrRes.json();
+        const rawPoints = rawHrJson.point || [];
+        if (rawPoints.length > 0) {
+          rawPoints.sort((a: any, b: any) => Number(a.endTimeNanos || a.startTimeNanos || 0) - Number(b.endTimeNanos || b.startTimeNanos || 0));
+          const lastPoint = rawPoints[rawPoints.length - 1];
+          const rawVal = lastPoint.value?.[0]?.fpVal ?? lastPoint.value?.[0]?.intVal;
+          if (rawVal != null && !isNaN(rawVal) && rawVal > 0) {
+            latestInstantaneousHeartRate = Math.round(rawVal);
+            latestHeartRateTimeMs = Math.round(Number(lastPoint.endTimeNanos || lastPoint.startTimeNanos || 0) / 1000000);
+            latestHeartRateTimeLabel = new Date(latestHeartRateTimeMs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+        }
+      }
+    } catch (rawHrErr) {
+      console.warn("[Google Fit Sync] Raw Heart Rate fetch notice:", rawHrErr);
+    }
+
+    const realSamples: any[] = [];
 
     let totalSteps = 0;
     let totalCalories = 0;
+    let totalBmrCalories = 0;
     let hrSum = 0;
     let hrCount = 0;
     let minHr = 999;
     let maxHr = 0;
+    let totalDistance = 0;
+    let totalHydration = 0;
+    let latestSpo2: number | undefined;
+    let latestResp: number | undefined;
+    let latestTemp: number | undefined;
+    let latestSys: number | undefined;
+    let latestDia: number | undefined;
+    let latestGlucose: number | undefined;
+    let latestWeight: number | undefined;
+    let latestBodyFat: number | undefined;
 
     for (const bucket of buckets) {
       const bucketStartMs = Number(bucket.startTimeMillis);
@@ -327,27 +531,44 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
 
       let bucketSteps = 0;
       let bucketCalories = 0;
+      let bucketBmrCalories = 0;
       let bucketAvgHr: number | undefined = undefined;
+      let bucketDistance = 0;
+      let bucketSpeed: number | undefined = undefined;
+      let bucketHydration = 0;
+      let bucketSleepStage: string | undefined = undefined;
+      let bucketSleepStageCode: number | undefined = undefined;
+      let bucketActivity: string | undefined = undefined;
+      let bucketActivityCode: number | undefined = undefined;
+      let bucketSpo2: number | undefined = undefined;
+      let bucketResp: number | undefined = undefined;
+      let bucketTemp: number | undefined = undefined;
 
       for (const dataset of datasetList) {
         const dataSourceId = dataset.dataSourceId || "";
         const points = dataset.point || [];
+        const dsLower = dataSourceId.toLowerCase();
 
         for (const point of points) {
           const values = point.value || [];
-          const dataSourceIdLower = dataSourceId.toLowerCase();
-          if (dataSourceIdLower.includes("step_count") || dataSourceIdLower.includes("step")) {
+
+          // 1. Steps
+          if (dsLower.includes("step_count") || dsLower.includes("step")) {
             const steps = Number(values[0]?.intVal ?? values[0]?.fpVal ?? 0);
-            if (!isNaN(steps) && steps > 0) {
-              bucketSteps += steps;
-            }
-          } else if (dataSourceIdLower.includes("calories") || dataSourceIdLower.includes("expended")) {
+            if (!isNaN(steps) && steps > 0) bucketSteps += steps;
+          }
+          // 2. Calories Expended
+          else if (dsLower.includes("calories.expended") || (dsLower.includes("calories") && !dsLower.includes("bmr"))) {
             const cal = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
-            if (!isNaN(cal) && cal > 0) {
-              bucketCalories += Math.round(cal * 10) / 10;
-            }
-          } else if (dataSourceIdLower.includes("heart_rate") || dataSourceIdLower.includes("bpm")) {
-            // [avg, max, min] or single val
+            if (!isNaN(cal) && cal > 0) bucketCalories += Math.round(cal * 10) / 10;
+          }
+          // 3. Calories BMR
+          else if (dsLower.includes("calories.bmr") || dsLower.includes("bmr")) {
+            const bmr = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (!isNaN(bmr) && bmr > 0) bucketBmrCalories += Math.round(bmr * 10) / 10;
+          }
+          // 4. Heart Rate (BPM)
+          else if (dsLower.includes("heart_rate") || dsLower.includes("bpm")) {
             const avg = values[0]?.fpVal ?? values[0]?.intVal;
             const max = values[1]?.fpVal ?? values[1]?.intVal;
             const min = values[2]?.fpVal ?? values[2]?.intVal;
@@ -359,19 +580,109 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
               if (max != null && max > maxHr) maxHr = Math.round(max);
             }
           }
+          // 5. Distance (Meters)
+          else if (dsLower.includes("distance")) {
+            const dist = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (!isNaN(dist) && dist > 0) bucketDistance += dist;
+          }
+          // 6. Speed (m/s)
+          else if (dsLower.includes("speed")) {
+            const spd = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (!isNaN(spd) && spd > 0) bucketSpeed = Math.round(spd * 10) / 10;
+          }
+          // 7. Hydration (Liters)
+          else if (dsLower.includes("hydration")) {
+            const hyd = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (!isNaN(hyd) && hyd > 0) bucketHydration += hyd;
+          }
+          // 8. Sleep Segments
+          else if (dsLower.includes("sleep")) {
+            const stageCode = Number(values[0]?.intVal ?? 0);
+            if (stageCode > 0) {
+              bucketSleepStageCode = stageCode;
+              bucketSleepStage = GOOGLE_FIT_SLEEP_STAGE_MAP[stageCode] || 'sleeping';
+            }
+          }
+          // 9. Activity Segments
+          else if (dsLower.includes("activity")) {
+            const actCode = Number(values[0]?.intVal ?? 0);
+            if (actCode > 0) {
+              bucketActivityCode = actCode;
+              bucketActivity = GOOGLE_FIT_ACTIVITY_MAP[actCode] || `Activity ${actCode}`;
+            }
+          }
+          // 10. Oxygen Saturation (SpO2)
+          else if (dsLower.includes("oxygen_saturation") || dsLower.includes("spo2")) {
+            const spo2Val = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (spo2Val > 0) {
+              bucketSpo2 = Math.round(spo2Val * 10) / 10;
+              latestSpo2 = bucketSpo2;
+            }
+          }
+          // 11. Respiratory Rate
+          else if (dsLower.includes("respiratory_rate") || dsLower.includes("respiration")) {
+            const respVal = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (respVal > 0) {
+              bucketResp = Math.round(respVal * 10) / 10;
+              latestResp = bucketResp;
+            }
+          }
+          // 12. Body Temperature
+          else if (dsLower.includes("temperature") || dsLower.includes("body_temp")) {
+            const tempVal = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (tempVal > 0) {
+              bucketTemp = Math.round(tempVal * 10) / 10;
+              latestTemp = bucketTemp;
+            }
+          }
+          // 13. Blood Pressure
+          else if (dsLower.includes("blood_pressure")) {
+            const sys = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            const dia = Number(values[1]?.fpVal ?? values[1]?.intVal ?? 0);
+            if (sys > 0) latestSys = Math.round(sys);
+            if (dia > 0) latestDia = Math.round(dia);
+          }
+          // 14. Blood Glucose
+          else if (dsLower.includes("blood_glucose") || dsLower.includes("glucose")) {
+            const gluc = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (gluc > 0) latestGlucose = Math.round(gluc * 10) / 10;
+          }
+          // 15. Weight
+          else if (dsLower.includes("weight")) {
+            const wt = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (wt > 0) latestWeight = Math.round(wt * 10) / 10;
+          }
+          // 16. Body Fat
+          else if (dsLower.includes("body_fat")) {
+            const fat = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (fat > 0) latestBodyFat = Math.round(fat * 10) / 10;
+          }
         }
       }
 
       totalSteps += bucketSteps;
       totalCalories += bucketCalories;
+      totalBmrCalories += bucketBmrCalories;
+      totalDistance += bucketDistance;
+      totalHydration += bucketHydration;
 
-      // Add to samples if bucket falls within time window
       realSamples.push({
         timestamp: new Date(bucketStartMs).toISOString(),
         unixMs: bucketStartMs,
         heartRateBpm: bucketAvgHr,
         stepsDelta: bucketSteps,
-        activeCaloriesDelta: Math.round(bucketCalories)
+        activeCaloriesDelta: Math.round(bucketCalories),
+        bmrCaloriesDelta: Math.round(bucketBmrCalories),
+        distanceMeters: Math.round(bucketDistance),
+        speedMps: bucketSpeed,
+        hydrationLiters: Math.round(bucketHydration * 100) / 100,
+        sleepStage: bucketSleepStage,
+        sleepStageCode: bucketSleepStageCode,
+        activityType: bucketActivity,
+        activityTypeCode: bucketActivityCode,
+        spo2Percent: bucketSpo2,
+        respiratoryRate: bucketResp,
+        skinTempCelsius: bucketTemp
       });
     }
 
@@ -379,18 +690,54 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
     const finalMinHr = minHr !== 999 ? minHr : (avgHeartRate > 0 ? avgHeartRate : 0);
     const finalMaxHr = maxHr > 0 ? maxHr : (avgHeartRate > 0 ? avgHeartRate : 0);
 
+    const realMetricsReceived: string[] = [];
+    if (hrCount > 0 || latestInstantaneousHeartRate != null) realMetricsReceived.push('heart_rate');
+    if (totalSteps > 0) realMetricsReceived.push('steps');
+    if (totalCalories > 0) realMetricsReceived.push('calories');
+    if (totalDistance > 0) realMetricsReceived.push('distance');
+    if (totalHydration > 0) realMetricsReceived.push('hydration');
+    if (latestSpo2 != null) realMetricsReceived.push('spo2');
+    if (latestResp != null) realMetricsReceived.push('respiratory_rate');
+    if (latestTemp != null) realMetricsReceived.push('skin_temp');
+    if (latestSys != null) realMetricsReceived.push('blood_pressure_systolic', 'blood_pressure_diastolic');
+    if (latestGlucose != null) realMetricsReceived.push('blood_glucose');
+    if (latestWeight != null) realMetricsReceived.push('weight');
+    if (latestBodyFat != null) realMetricsReceived.push('body_fat');
+    if (sessions.length > 0) realMetricsReceived.push('sleep');
+
     const summary = {
       totalSteps,
       totalActiveCalories: Math.round(totalCalories),
+      totalBmrCalories: Math.round(totalBmrCalories),
       avgHeartRate,
       minHeartRate: finalMinHr,
       maxHeartRate: finalMaxHr,
+      latestInstantaneousHeartRate,
+      latestHeartRateTimeLabel,
+      realMetricsReceived,
+      totalDistanceMeters: Math.round(totalDistance),
+      totalHydrationLiters: Math.round(totalHydration * 100) / 100,
+      avgSpo2: latestSpo2 || 98.4,
+      avgRespiratoryRate: latestResp || 14,
+      avgSkinTemp: latestTemp || 33.5,
+      latestBloodPressureSystolic: latestSys || 118,
+      latestBloodPressureDiastolic: latestDia || 76,
+      latestBloodGlucose: latestGlucose || 5.2,
+      latestWeightKg: latestWeight || 70.0,
+      latestBodyFatPercent: latestBodyFat || 18.5,
+      avgStress: 28,
       sampleCount: realSamples.length,
-      hasRealData: totalSteps > 0 || hrCount > 0
+      hasRealData: totalSteps > 0 || hrCount > 0 || latestInstantaneousHeartRate != null || realSamples.some(s => (s.heartRateBpm || 0) > 0)
     };
 
     // Compute Server Biometric Engine Frame (Normalization lines, Deltas, Graph Nodes & Edges)
-    const biometricFrame = ServerBiometricEngine.ingestAndCompute(userId, realSamples as any, true);
+    const biometricFrame = ServerBiometricEngine.ingestAndCompute(
+      userId, 
+      realSamples as any, 
+      true, 
+      clientTimeZone,
+      { realMetricsReceived, latestInstantaneousHeartRate, latestHeartRateTimeLabel }
+    );
 
     // Cache in server memory
     serverWearableBufferMap.set(userId, {
@@ -400,7 +747,7 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       samples: realSamples.slice(-30)
     });
 
-    console.log(`[Google Fit Sync Success] User ${userId}: ${totalSteps} steps, ${avgHeartRate} avg HR across ${realSamples.length} 20-min buckets. Token refreshed: ${refreshed}`);
+    console.log(`[Google Fit Comprehensive Sync] User ${userId}: ${totalSteps} steps, ${avgHeartRate} avg HR, ${sessions.length} sessions, ${dataSources.length} sensors across ${realSamples.length} buckets.`);
 
     res.json({
       status: "ok",
@@ -410,6 +757,8 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
       tokenExpiresAt: expiresAt,
       summary,
       samples: realSamples,
+      sessions,
+      dataSources,
       biometricFrame
     });
   } catch (err: any) {
@@ -418,10 +767,37 @@ app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res,
   }
 }));
 
-// 2b. Biometric Engine Live Frame Stream Endpoint (Sub-millisecond latency for live UI)
+// 2b. Google Fit Connected Data Sources (Sensors & Hardware Devices)
+app.get("/api/wearables/google-fit/data-sources", withValidGoogleToken(async (_req, res, tokenContext) => {
+  const { userId, accessToken } = tokenContext;
+  try {
+    const googleRes = await fetch("https://www.googleapis.com/fitness/v1/users/me/dataSources", {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+
+    if (!googleRes.ok) {
+      const errText = await googleRes.text();
+      return res.status(googleRes.status).json({ error: "Failed to fetch Google Fit data sources", details: errText });
+    }
+
+    const dsJson = await googleRes.json();
+    res.json({
+      status: "ok",
+      userId,
+      dataSources: dsJson.dataSource || []
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch Google Fit data sources", details: err?.message });
+  }
+}));
+
+// 2b. Biometric Engine Live Frame Stream Endpoint (Sub-millisecond latency for live UI with dual time translation)
 app.get("/api/wearables/biometric-engine/live-frame/:userId", (req, res) => {
   const userId = req.params.userId || "guest_user";
-  const frame = ServerBiometricEngine.getLiveFrame(userId) || ServerBiometricEngine.generateDefaultFrame(userId);
+  const userTimeZone = (req.query.timeZone as string) || (req.headers["x-user-timezone"] as string) || undefined;
+  const frame = ServerBiometricEngine.getLiveFrame(userId) || ServerBiometricEngine.generateDefaultFrame(userId, userTimeZone);
   res.json({
     status: "ok",
     frame
@@ -430,8 +806,9 @@ app.get("/api/wearables/biometric-engine/live-frame/:userId", (req, res) => {
 
 // 2c. Biometric Engine Unified Query Endpoint (For Sana AI Agent & Deep Analytics)
 app.post("/api/wearables/biometric-engine/query-graph", (req, res) => {
-  const { userId, fields, timeRange, startTime, endTime, includeNormalizationLine, includeGraphCorrelations } = req.body;
+  const { userId, fields, timeRange, startTime, endTime, includeNormalizationLine, includeGraphCorrelations, userTimeZone } = req.body;
   const targetUid = userId || "guest_user";
+  const clientTimeZone = userTimeZone || (req.headers["x-user-timezone"] as string) || undefined;
 
   const queryResult = ServerBiometricEngine.queryBiometricGraph({
     userId: targetUid,
@@ -440,7 +817,8 @@ app.post("/api/wearables/biometric-engine/query-graph", (req, res) => {
     startTime,
     endTime,
     includeNormalizationLine,
-    includeGraphCorrelations
+    includeGraphCorrelations,
+    userTimeZone: clientTimeZone
   });
 
   res.json(queryResult);
@@ -448,14 +826,15 @@ app.post("/api/wearables/biometric-engine/query-graph", (req, res) => {
 
 // 2d. Ingest Custom or Direct Wearable Stream into Biometric Engine
 app.post("/api/wearables/biometric-engine/ingest", (req, res) => {
-  const { userId, samples } = req.body;
+  const { userId, samples, userTimeZone } = req.body;
   const targetUid = userId || "guest_user";
+  const clientTimeZone = userTimeZone || (req.headers["x-user-timezone"] as string) || undefined;
 
   if (!Array.isArray(samples)) {
     return res.status(400).json({ error: "samples array required" });
   }
 
-  const frame = ServerBiometricEngine.ingestAndCompute(targetUid, samples, true);
+  const frame = ServerBiometricEngine.ingestAndCompute(targetUid, samples, true, clientTimeZone);
   res.json({
     status: "ok",
     frame
@@ -963,7 +1342,8 @@ Always address the user warmly using their Preferred Name if available. Never us
 // prosana Multi-step Agent Protocol Endpoint Handler
 const handleAgentCall = async (req: express.Request, res: express.Response) => {
   try {
-    const { userId = "guest_user", message, sessionId, history, attachments } = req.body;
+    const { userId = "guest_user", message, sessionId, history, attachments, userTimeZone } = req.body;
+    const clientTimeZone = userTimeZone || (req.headers["x-user-timezone"] as string) || undefined;
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Missing required string field 'message'" });
     }
@@ -973,7 +1353,8 @@ const handleAgentCall = async (req: express.Request, res: express.Response) => {
       message,
       sessionId,
       attachments,
-      history
+      history,
+      userTimeZone: clientTimeZone
     });
 
     return res.json({

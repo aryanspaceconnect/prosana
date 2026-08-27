@@ -20,12 +20,13 @@ export async function runSanaAgentGraph(params: AgentRunParams): Promise<AgentRu
     llmMessages: [],
     status: 'thinking',
     sessionNotepad: '',
-    context: { userId: params.userId, sessionId },
+    context: { userId: params.userId, sessionId, userTimeZone: params.userTimeZone },
     finalText: null,
     actionProposal: null,
     iterations: 0,
     onProgress: params.onProgress,
-    systemPrompt: params.systemPrompt
+    systemPrompt: params.systemPrompt,
+    userTimeZone: params.userTimeZone
   };
 
   // Restore prior state checkpoint if session was interrupted or retried mid-turn

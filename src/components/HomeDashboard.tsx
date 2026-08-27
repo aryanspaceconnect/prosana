@@ -280,11 +280,11 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         value: `UV ${uvVal.toFixed(1)}`,
         category: uvVal === 0 ? "Night / Zero UV" : uvVal < 3 ? "Low Risk" : uvVal < 6 ? "Moderate Risk" : uvVal < 8 ? "High Risk" : "Extreme Risk",
         skinImpact: uvVal === 0
-          ? "No solar UV radiation detected. Ideal window for nocturnal skin regeneration and lipid barrier lock."
-          : "Solar UV triggers reactive oxygen species (ROS), breaking down collagen fibrils and stimulating melanocytes.",
+          ? "Zero solar radiation. Ideal recovery window for circadian alignment and restful sleep."
+          : "Elevated UV increases ocular strain and thermal load during prolonged outdoor exertion.",
         recommendation: uvVal === 0
-          ? "Focus on PM hydration, ceramide balms, and night treatments."
-          : "Apply 2 finger-lengths of broad-spectrum SPF 50+. Reapply every 2 hours if outdoors.",
+          ? "Maintain dark, cool indoor sleep conditions to maximize heart rate recovery."
+          : "Stay well hydrated, seek periodic shade, and avoid peak sun hours during heavy cardio.",
         icon: uvVal === 0 ? "solar:moon-stars-bold-duotone" : "solar:sun-bold-duotone",
         colorClass: uvVal === 0 ? "bg-indigo-500/10 text-indigo-600 border-indigo-200/60" : "bg-amber-500/10 text-amber-600 border-amber-200/60"
       },
@@ -292,8 +292,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "Air Quality Index (AQI)",
         value: `AQI ${aqiVal}`,
         category: aqiVal <= 50 ? "Good" : aqiVal <= 100 ? "Moderate" : "Sensitive Alert",
-        skinImpact: "Microscopic airborne particles trigger AhR receptor pathways, weakening the stratum corneum lipid matrix.",
-        recommendation: "Layer an antioxidant serum (Niacinamide / Vitamin C) under moisturizer to neutralize free radicals.",
+        skinImpact: "Airborne particulates increase bronchial inflammation and elevate resting heart rate during exercise.",
+        recommendation: "Pace outdoor cardio or move high-intensity workouts indoors to minimize respiratory stress.",
         icon: "solar:leaf-bold-duotone",
         colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-200/60"
       },
@@ -301,8 +301,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "Relative Humidity",
         value: humVal.includes('%') ? humVal : `${humVal}%`,
         category: "Atmospheric Moisture",
-        skinImpact: "Higher relative humidity preserves epidermal hydration but can trap excess sebum and micro-debris.",
-        recommendation: "A gentle gel cleanser prevents follicular congestion without stripping your acid mantle.",
+        skinImpact: "High humidity impairs sweat evaporation, placing extra demand on your cardiovascular cooling mechanism.",
+        recommendation: "Increase fluid intake and replenish electrolytes during extended outdoor movement.",
         icon: "solar:droplet-bold-duotone",
         colorClass: "bg-sky-500/10 text-sky-600 border-sky-200/60"
       },
@@ -310,17 +310,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "Wind Velocity & Gusts",
         value: windVal,
         category: "Atmospheric Flow",
-        skinImpact: "Surface airflow strips the moisture film, accelerating transepidermal water loss (TEWL).",
-        recommendation: "Reinforce with a ceramide-rich barrier cream and apply a protective lip occlusive.",
+        skinImpact: "Strong wind currents accelerate evaporative fluid loss and lower perceived thermal comfort.",
+        recommendation: "Hydrate proactively before outdoor runs and wear wind-resistant layers.",
         icon: "solar:wind-bold-duotone",
         colorClass: "bg-cyan-500/10 text-cyan-600 border-cyan-200/60"
       },
       clouds: {
-        label: "Cloud Cover & UV Penetration",
+        label: "Cloud Cover & Solar Filtration",
         value: cloudVal,
         category: "Solar Filtration",
-        skinImpact: "Overcast skies absorb infra-red heat, but up to 85% of damaging UVA radiation still penetrates through clouds.",
-        recommendation: "Do not skip daily SPF sunscreen on overcast or cloudy days.",
+        skinImpact: "Overcast skies reduce direct heat glare but ambient light and diffuse radiation remain present.",
+        recommendation: "Ideal condition for steady outdoor walking and moderate pace training.",
         icon: "solar:clouds-bold-duotone",
         colorClass: "bg-slate-500/10 text-slate-600 border-slate-200/60"
       },
@@ -328,8 +328,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "Dew Point Saturation",
         value: dewVal,
         category: "Comfort Index",
-        skinImpact: "Dew point indicates absolute air moisture. Higher levels increase sweat evaporation resistance.",
-        recommendation: "Switch to featherweight humectants like Hyaluronic Acid and Panthenol.",
+        skinImpact: "High dew point levels make air feel muggy, increasing heart rate response at lower exercise intensity.",
+        recommendation: "Pace exertion carefully and monitor heart rate zones when training outdoors.",
         icon: "solar:water-drop-bold-duotone",
         colorClass: "bg-blue-500/10 text-blue-600 border-blue-200/60"
       },
@@ -337,8 +337,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "PM2.5 Microparticulates",
         value: pm25Val,
         category: "Fine Particulate Matter",
-        skinImpact: "Combustion particulates under 2.5 micrometers penetrate follicular openings, inducing lipid peroxidation.",
-        recommendation: "Double cleanse in the evening (oil/balm followed by gentle pH-balanced foaming cleanser).",
+        skinImpact: "Fine microparticulates enter deep airway tissue, subtly straining respiratory efficiency.",
+        recommendation: "Keep outdoor walks light and consider HEPA indoor air filtration.",
         icon: "solar:shield-warning-bold-duotone",
         colorClass: "bg-emerald-500/10 text-emerald-600 border-emerald-200/60"
       },
@@ -346,17 +346,17 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
         label: "PM10 Coarse Particulates",
         value: pm10Val,
         category: "Coarse Airborne Dust",
-        skinImpact: "Coarse dust and environmental soil rest on the surface, causing friction and superficial irritation.",
-        recommendation: "Rinse face with thermal spring water or micellar cleanser after prolonged outdoor exposure.",
+        skinImpact: "Coarse dust particles can cause upper airway and eye irritation in windy environments.",
+        recommendation: "Wear protective sunglasses and rinse eyes with saline solution post-walk if irritated.",
         icon: "solar:atom-bold-duotone",
         colorClass: "bg-teal-500/10 text-teal-600 border-teal-200/60"
       },
       vpd: {
         label: "Vapour Pressure Deficit (VPD)",
         value: vpdVal,
-        category: "Epidermal Evaporative Pressure",
-        skinImpact: "VPD measures the drying force exerted by ambient air on your skin barrier.",
-        recommendation: "At optimal VPD, skin transpires naturally without excessive dehydration.",
+        category: "Atmospheric Evaporative Pressure",
+        skinImpact: "VPD reflects atmospheric drying potential, affecting respiratory tract moisture and systemic fluid balance.",
+        recommendation: "Sip water regularly to keep respiratory membranes hydrated and comfortable.",
         icon: "solar:soundwave-bold-duotone",
         colorClass: "bg-indigo-500/10 text-indigo-600 border-indigo-200/60"
       }
@@ -610,7 +610,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
 
               {/* Minimalist Hint Bar */}
               <div className="pt-1 text-left text-[10px] text-[#94a3b8]">
-                <span>Tap any metric to inspect skin barrier impact</span>
+                <span>Tap any metric to inspect health & vital impact</span>
               </div>
             </motion.div>
           )}
@@ -821,8 +821,8 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               {(companionSignal?.lines && companionSignal.lines.length > 0
                 ? companionSignal.lines
                 : [
-                    "Keep morning hydration lightweight and breathable today.",
-                    "Let active serums rest if your barrier feels reactive."
+                    "Hydrate adequately to support cardiac output and thermoregulation today.",
+                    "Maintain balanced exertion and track your heart rate recovery."
                   ]
               ).map((sentence, idx) => (
                 <div key={idx} className="flex items-start space-x-2.5">
@@ -873,10 +873,10 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 </button>
               </div>
 
-              {/* Skin Impact Card */}
+              {/* Health Impact Card */}
               <div className="p-3 rounded-2xl bg-[#f8fafc] border border-[#e2e8f0] space-y-1.5">
                 <span className="text-[10.5px] font-bold text-[#475569] uppercase tracking-wider block">
-                  Cutaneous Impact
+                  Physiological Impact
                 </span>
                 <p className="text-[12px] font-medium text-[#1e293b] leading-relaxed">
                   {activeMetricDetail.skinImpact}
@@ -886,7 +886,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
               {/* Recommendation */}
               <div className="p-3 rounded-2xl bg-[#f0f9ff] border border-[#e0f2fe] space-y-1.5">
                 <span className="text-[10.5px] font-bold text-[#0369a1] uppercase tracking-wider block">
-                  Regimen Adjustment
+                  Health Guidance
                 </span>
                 <p className="text-[12px] font-medium text-[#0c4a6e] leading-relaxed">
                   {activeMetricDetail.recommendation}

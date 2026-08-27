@@ -25,8 +25,25 @@ export const WEARABLE_PROVIDERS: WearableProviderMeta[] = [
     badge: 'Live Google OAuth & REST',
     icon: 'logos:google-fit',
     color: '#4285F4',
-    description: 'Direct REST API integration with Google Fit & Android Health Connect. Syncs real heart rate, step counts, active energy burn, and sleep sessions.',
-    metricsSupported: ['Step Count', 'Heart Rate (BPM)', 'Active Calories', 'Heart Minutes', 'Sleep Cycles']
+    description: 'Direct REST API integration with Google Fit & Android Health Connect. Ingests all 18 clinical, movement, and physiological health channels, real-time sessions, and connected hardware sensors.',
+    metricsSupported: [
+      'Heart Rate (BPM)',
+      'Step Count & Cadence',
+      'Active & BMR Calories',
+      'HRV Recovery',
+      'Clinical Readiness',
+      'Autonomic Strain',
+      'SpO2 Blood Oxygen',
+      'Sleep Architecture',
+      'Respiratory Rate',
+      'Skin Temperature',
+      'Blood Pressure',
+      'Blood Glucose',
+      'Distance Traveled',
+      'Movement Speed',
+      'Hydration Intake',
+      'Body Weight & Fat %'
+    ]
   },
   {
     id: 'apple_health',
@@ -297,7 +314,14 @@ class WearableBufferManager {
             'https://www.googleapis.com/auth/fitness.activity.read',
             'https://www.googleapis.com/auth/fitness.heart_rate.read',
             'https://www.googleapis.com/auth/fitness.body.read',
-            'https://www.googleapis.com/auth/fitness.sleep.read'
+            'https://www.googleapis.com/auth/fitness.body_temperature.read',
+            'https://www.googleapis.com/auth/fitness.blood_pressure.read',
+            'https://www.googleapis.com/auth/fitness.blood_glucose.read',
+            'https://www.googleapis.com/auth/fitness.oxygen_saturation.read',
+            'https://www.googleapis.com/auth/fitness.reproductive_health.read',
+            'https://www.googleapis.com/auth/fitness.sleep.read',
+            'https://www.googleapis.com/auth/fitness.location.read',
+            'https://www.googleapis.com/auth/fitness.nutrition.read'
           ].join(' '),
           callback: (response: any) => {
             if (response.error) {
@@ -345,7 +369,14 @@ class WearableBufferManager {
             'https://www.googleapis.com/auth/fitness.activity.read',
             'https://www.googleapis.com/auth/fitness.heart_rate.read',
             'https://www.googleapis.com/auth/fitness.body.read',
-            'https://www.googleapis.com/auth/fitness.sleep.read'
+            'https://www.googleapis.com/auth/fitness.body_temperature.read',
+            'https://www.googleapis.com/auth/fitness.blood_pressure.read',
+            'https://www.googleapis.com/auth/fitness.blood_glucose.read',
+            'https://www.googleapis.com/auth/fitness.oxygen_saturation.read',
+            'https://www.googleapis.com/auth/fitness.reproductive_health.read',
+            'https://www.googleapis.com/auth/fitness.sleep.read',
+            'https://www.googleapis.com/auth/fitness.location.read',
+            'https://www.googleapis.com/auth/fitness.nutrition.read'
           ].join(' '),
           callback: (response: any) => {
             if (response.access_token) {

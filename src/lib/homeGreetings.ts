@@ -148,7 +148,7 @@ export const ALL_HOME_GREETINGS: GreetingEntry[] = [
   { id: 'mid_18', template: 'Simple midday.', hasName: false, window: 'midday', tone: 'neutral' },
   { id: 'mid_19', template: 'Hey — pause allowed.', hasName: false, window: 'midday', tone: 'neutral' },
   { id: 'mid_20', template: 'Sun overhead.', hasName: false, window: 'midday', tone: 'neutral' },
-  { id: 'mid_21', template: 'Keep skin in mind.', hasName: false, window: 'midday', tone: 'neutral' },
+  { id: 'mid_21', template: 'Keep vitals in mind.', hasName: false, window: 'midday', tone: 'neutral' },
   { id: 'mid_22', template: 'Light lunch energy.', hasName: false, window: 'midday', tone: 'younger' },
   { id: 'mid_23', template: '{name}, still here.', hasName: true, window: 'midday', tone: 'neutral' },
   { id: 'mid_24', template: 'Day’s thickest light.', hasName: false, window: 'midday', tone: 'neutral' },
@@ -382,7 +382,7 @@ const WINDOW_ATMOSPHERE: Record<
   },
   morning: {
     label: 'Morning',
-    subtext: 'Morning barrier & SPF routine window',
+    subtext: 'Morning vital check & hydration window',
     iconName: 'solar:sun-2-bold-duotone',
     iconColor: 'text-amber-500'
   },
@@ -394,13 +394,13 @@ const WINDOW_ATMOSPHERE: Record<
   },
   midday: {
     label: 'Midday',
-    subtext: 'Peak UV hour • Reapply SPF if outdoors',
+    subtext: 'Peak UV & thermal load • Hydrate & pace exertion',
     iconName: 'solar:sun-bold-duotone',
     iconColor: 'text-amber-400'
   },
   afternoon: {
     label: 'Afternoon',
-    subtext: 'Midday stretch • Barrier moisture check',
+    subtext: 'Midday movement & energy recharge',
     iconName: 'solar:sun-2-bold-duotone',
     iconColor: 'text-amber-500'
   },
@@ -412,7 +412,7 @@ const WINDOW_ATMOSPHERE: Record<
   },
   evening: {
     label: 'Evening',
-    subtext: 'Evening cleanse & barrier recovery regimen',
+    subtext: 'Evening wind-down & vital recovery window',
     iconName: 'solar:sunset-bold-duotone',
     iconColor: 'text-orange-500'
   },
