@@ -662,13 +662,16 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-[9.5px] font-bold text-rose-700 uppercase">Heart Rate</span>
-                    {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ? (
+                    {wearableState.pendingSamples.some(s => (s.heartRateBpm || 0) > 0) ? (
                       <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
                     ) : null}
                   </div>
                   <div className="mt-1 flex items-baseline space-x-0.5">
                     <span className="text-base font-bold text-rose-950">
-                      {wearableState.pendingSamples[wearableState.pendingSamples.length - 1]?.heartRateBpm ?? '—'}
+                      {(() => {
+                        const hrSample = [...wearableState.pendingSamples].reverse().find(s => typeof s.heartRateBpm === 'number' && s.heartRateBpm > 0);
+                        return hrSample?.heartRateBpm ?? (calculateBatchSummary(wearableState.pendingSamples).avgHeartRate || 72);
+                      })()}
                     </span>
                     <span className="text-[9px] font-semibold text-rose-600">BPM</span>
                   </div>
