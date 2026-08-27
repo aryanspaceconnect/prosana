@@ -185,6 +185,41 @@ class WearableBufferManager {
     if (this.userId !== uid) {
       this.userId = uid;
       this.restoreFromLocalStorage();
+      this.hydrateFromFirestore().catch(() => {});
+    }
+  }
+
+  // Hydrate connection state and latest batches from Firestore if local cache is empty or fresh
+  public async hydrateFromFirestore() {
+    if (!this.userId || this.userId === 'guest_user') return;
+    try {
+      // 1. Fetch user wearable connection
+      const userRef = doc(db, 'users', this.userId);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const userData = userSnap.data();
+        if (userData?.wearableConnection && !this.connection) {
+          this.connection = userData.wearableConnection;
+          this.persistToLocalStorage();
+        }
+      }
+
+      // 2. Fetch latest wearable batch if no samples locally
+      if (this.pendingSamples.length === 0) {
+        const batchesRef = collection(db, 'users', this.userId, 'wearable_batches');
+        const q = query(batchesRef, orderBy('createdAt', 'desc'), limit(1));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const docData = snap.docs[0].data();
+          if (Array.isArray(docData.samples) && docData.samples.length > 0) {
+            this.pendingSamples = docData.samples;
+            this.persistToLocalStorage();
+            this.broadcastStateChange({ syncedAt: docData.endTime || docData.createdAt });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[WearableBuffer] Firestore hydration warning:', err);
     }
   }
 
@@ -236,7 +271,12 @@ class WearableBufferManager {
   }
 
   // Real Google OAuth 2.0 Token Flow
-  public async authorizeGoogleFit(customClientId?: string): Promise<{ accessToken: string }> {
+  public async authorizeGoogleFit(customClientId?: string): Promise<{
+    accessToken: string;
+    expiresIn?: number;
+    expiresAt?: number;
+    tokenType?: string;
+  }> {
     const clientId = customClientId || 
       (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
       '';
@@ -263,7 +303,14 @@ class WearableBufferManager {
             if (response.error) {
               reject(new Error(response.error_description || response.error || 'Google authorization declined'));
             } else if (response.access_token) {
-              resolve({ accessToken: response.access_token });
+              const expiresIn = Number(response.expires_in) || 3600;
+              const expiresAt = Date.now() + (expiresIn * 1000);
+              resolve({
+                accessToken: response.access_token,
+                expiresIn,
+                expiresAt,
+                tokenType: response.token_type || 'Bearer'
+              });
             } else {
               reject(new Error('No access token returned from Google Identity Services'));
             }
@@ -280,17 +327,76 @@ class WearableBufferManager {
     });
   }
 
-  // Connect Google Fit with real OAuth token
-  public async connectGoogleFit(accessToken: string, email?: string): Promise<WearableConnectionState> {
+  // Proactive Silent Renewal via Google Identity Services
+  public async renewGoogleAccessTokenSilently(customClientId?: string): Promise<string | null> {
+    const clientId = customClientId || 
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GOOGLE_CLIENT_ID) ||
+      '';
+
+    if (!clientId || !window.google?.accounts?.oauth2) {
+      return null;
+    }
+
+    return new Promise((resolve) => {
+      try {
+        const client = window.google.accounts.oauth2.initTokenClient({
+          client_id: clientId,
+          scope: [
+            'https://www.googleapis.com/auth/fitness.activity.read',
+            'https://www.googleapis.com/auth/fitness.heart_rate.read',
+            'https://www.googleapis.com/auth/fitness.body.read',
+            'https://www.googleapis.com/auth/fitness.sleep.read'
+          ].join(' '),
+          callback: (response: any) => {
+            if (response.access_token) {
+              const expiresIn = Number(response.expires_in) || 3600;
+              const expiresAt = Date.now() + (expiresIn * 1000);
+              if (this.connection) {
+                this.connection.accessToken = response.access_token;
+                this.connection.expiresAt = expiresAt;
+                this.connection.lastRefreshedAt = new Date().toISOString();
+                this.connection.status = 'connected';
+                this.connection.errorMessage = undefined;
+                this.persistToLocalStorage();
+              }
+              resolve(response.access_token);
+            } else {
+              resolve(null);
+            }
+          },
+          error_callback: () => resolve(null)
+        });
+
+        // Request token with empty prompt (silent re-auth if Google session active)
+        client.requestAccessToken({ prompt: '' });
+      } catch {
+        resolve(null);
+      }
+    });
+  }
+
+  // Connect Google Fit with real OAuth token & expiration metadata
+  public async connectGoogleFit(
+    accessToken: string,
+    email?: string,
+    expiresIn: number = 3600,
+    refreshToken?: string
+  ): Promise<WearableConnectionState> {
+    const now = new Date();
+    const expiresAt = Date.now() + (expiresIn * 1000);
+
     const newConnection: WearableConnectionState = {
       provider: 'google_fit',
       status: 'connected',
       deviceName: 'Google Fit & Health Connect',
       batteryPercent: undefined,
-      connectedAt: new Date().toISOString(),
-      lastSyncedAt: new Date().toISOString(),
+      connectedAt: now.toISOString(),
+      lastSyncedAt: now.toISOString(),
       autoSyncIntervalMinutes: BUFFER_WINDOW_MINUTES,
       accessToken,
+      refreshToken,
+      expiresAt,
+      lastRefreshedAt: now.toISOString(),
       accountEmail: email
     };
 
@@ -307,7 +413,10 @@ class WearableBufferManager {
             status: 'connected',
             deviceName: 'Google Fit & Health Connect',
             connectedAt: newConnection.connectedAt,
-            lastSyncedAt: newConnection.lastSyncedAt
+            lastSyncedAt: newConnection.lastSyncedAt,
+            expiresAt: newConnection.expiresAt,
+            lastRefreshedAt: newConnection.lastRefreshedAt,
+            accountEmail: email
           },
           updatedAt: serverTimestamp()
         }), { merge: true });
@@ -321,15 +430,64 @@ class WearableBufferManager {
     return this.connection;
   }
 
-  // Execute real REST fetch from Google Fitness API
+  // Ensures a valid, unexpired token exists before health fetching
+  public async ensureFreshAccessToken(): Promise<string | null> {
+    if (!this.connection || !this.connection.accessToken) {
+      return null;
+    }
+
+    const expiresAt = this.connection.expiresAt;
+    const safetyBufferMs = 5 * 60 * 1000; // 5 minutes before actual expiry
+
+    // If token has an expiration and is nearing expiry, attempt silent renewal
+    if (expiresAt && Date.now() >= (expiresAt - safetyBufferMs)) {
+      console.log('[WearableBuffer] Token nearing expiry. Triggering proactive silent renewal...');
+      
+      // 1. Try server-side refresh if refresh_token is present
+      if (this.connection.refreshToken) {
+        try {
+          const res = await fetch('/api/wearables/google-fit/refresh-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: this.userId,
+              refreshToken: this.connection.refreshToken
+            })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.accessToken) {
+              this.connection.accessToken = data.accessToken;
+              this.connection.expiresAt = data.expiresAt || (Date.now() + (data.expiresIn || 3600) * 1000);
+              this.connection.lastRefreshedAt = new Date().toISOString();
+              this.persistToLocalStorage();
+              return data.accessToken;
+            }
+          }
+        } catch (e) {
+          console.warn('[WearableBuffer] Server token refresh error:', e);
+        }
+      }
+
+      // 2. Try browser GSI silent renewal
+      const silentToken = await this.renewGoogleAccessTokenSilently();
+      if (silentToken) return silentToken;
+    }
+
+    return this.connection.accessToken;
+  }
+
+  // Execute real REST fetch from Google Fitness API with Token Auto-Renewal handling
   public async syncRealGoogleFitData(tokenOverride?: string): Promise<{
     success: boolean;
     samples: WearableSample[];
     summary: WearableBatchSummary;
     error?: string;
   }> {
-    const token = tokenOverride || this.connection?.accessToken;
-    if (!token) {
+    // Proactively verify & renew token if needed
+    const validToken = tokenOverride || await this.ensureFreshAccessToken() || this.connection?.accessToken;
+
+    if (!validToken) {
       return {
         success: false,
         samples: [],
@@ -342,21 +500,45 @@ class WearableBufferManager {
     this.broadcastStateChange({ isSyncing: true });
 
     try {
+      const now = new Date();
+      const localStartOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+
       const res = await fetch('/api/wearables/google-fit/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: this.userId,
-          accessToken: token
+          accessToken: validToken,
+          refreshToken: this.connection?.refreshToken,
+          expiresAt: this.connection?.expiresAt,
+          startTimeMillis: localStartOfDay.getTime(),
+          endTimeMillis: now.getTime()
         })
       });
 
+      // Synchronize refreshed token from response headers if renewed by server
+      const refreshedTokenHeader = res.headers.get('x-refreshed-access-token');
+      const expiresAtHeader = res.headers.get('x-token-expires-at');
+      if (refreshedTokenHeader && this.connection) {
+        this.connection.accessToken = refreshedTokenHeader;
+        if (expiresAtHeader) this.connection.expiresAt = Number(expiresAtHeader);
+        this.connection.lastRefreshedAt = new Date().toISOString();
+        this.persistToLocalStorage();
+      }
+
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
-        if (res.status === 401) {
+        if (res.status === 401 || errJson.code === 'TOKEN_EXPIRED_REAUTH_REQUIRED') {
+          // Attempt one automatic silent renewal
+          const refreshedToken = await this.renewGoogleAccessTokenSilently();
+          if (refreshedToken && !tokenOverride) {
+            console.log('[WearableBuffer] Silently refreshed token after 401. Retrying sync...');
+            return this.syncRealGoogleFitData(refreshedToken);
+          }
+
           if (this.connection) {
             this.connection.status = 'error';
-            this.connection.errorMessage = 'Google OAuth token expired. Please re-connect.';
+            this.connection.errorMessage = 'Google OAuth session expired. Please click to reconnect.';
             this.persistToLocalStorage();
           }
         }
@@ -366,6 +548,12 @@ class WearableBufferManager {
       const data = await res.json();
       const realSamples: WearableSample[] = data.samples || [];
       const summary = data.summary || calculateBatchSummary(realSamples);
+
+      // If server returned refreshed token in JSON body, sync it
+      if (data.tokenRefreshed && data.tokenExpiresAt && this.connection) {
+        this.connection.expiresAt = data.tokenExpiresAt;
+        this.connection.lastRefreshedAt = new Date().toISOString();
+      }
 
       this.pendingSamples = realSamples;
       if (this.connection) {

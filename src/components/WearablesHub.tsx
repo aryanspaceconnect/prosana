@@ -92,8 +92,12 @@ export const WearablesHub: React.FC<WearablesHubProps> = ({ userId, isOpen, onCl
     setIsAuthenticating(true);
     setErrorMessage(null);
     try {
-      const { accessToken } = await wearableBufferService.authorizeGoogleFit(customClientId.trim() || undefined);
-      await wearableBufferService.connectGoogleFit(accessToken);
+      const authResult = await wearableBufferService.authorizeGoogleFit(customClientId.trim() || undefined);
+      await wearableBufferService.connectGoogleFit(
+        authResult.accessToken,
+        undefined,
+        authResult.expiresIn || 3600
+      );
       setBufferState(wearableBufferService.getBufferState());
       setSuccessNotice('Google Fit connected successfully! Syncing latest biometric data...');
       setTimeout(() => setSuccessNotice(null), 4000);
@@ -254,13 +258,19 @@ export const WearablesHub: React.FC<WearablesHubProps> = ({ userId, isOpen, onCl
                     <Icon icon="logos:google-fit" className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <h4 className={`text-base font-bold ${isConnected ? 'text-white' : 'text-slate-900'}`}>
                         {googleFitProvider.name}
                       </h4>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30">
                         {googleFitProvider.badge}
                       </span>
+                      {isConnected && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center space-x-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block" />
+                          <span>OAuth Auto-Renew Active</span>
+                        </span>
+                      )}
                     </div>
                     <p className={`text-xs mt-1 leading-relaxed ${isConnected ? 'text-slate-300' : 'text-slate-600'}`}>
                       {googleFitProvider.description}

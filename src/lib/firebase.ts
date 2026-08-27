@@ -75,6 +75,64 @@ export function sanitizeForFirestore<T>(obj: T): T {
   return clean as T;
 }
 
+/**
+ * Defensive Message Document Sanitizer & 1MB Limit Guard for Firestore
+ * Strips raw base64 data URIs from attachments and compacts long execution traces
+ */
+export function prepareMessageForFirestore(msg: any): Record<string, any> {
+  if (!msg) return {};
+  const clean: Record<string, any> = sanitizeForFirestore({ ...msg });
+
+  // Remove non-persistent runtime structures
+  delete clean.actionProposal;
+  delete clean.thinkingMeta;
+
+  // 1. Sanitize attachments (strip heavy data:image/ or data:application/ base64 payloads)
+  if (Array.isArray(clean.attachments)) {
+    clean.attachments = clean.attachments.map((att: any) => {
+      if (!att) return att;
+      const copy = { ...att };
+      if (typeof copy.url === 'string' && copy.url.startsWith('data:')) {
+        // Replace raw base64 string with lightweight metadata reference
+        copy.url = '';
+        copy.isInlineDataStripped = true;
+      }
+      return copy;
+    });
+  }
+
+  // 2. Compact bulky execution traces or tool call dumps
+  if (Array.isArray(clean.passOnTrace)) {
+    clean.passOnTrace = clean.passOnTrace.slice(-15).map((trace: any) => {
+      if (!trace || typeof trace !== 'object') return trace;
+      const copy = { ...trace };
+      if (typeof copy.output === 'string' && copy.output.length > 2000) {
+        copy.output = copy.output.slice(0, 2000) + '... [truncated for storage]';
+      }
+      if (typeof copy.arguments === 'string' && copy.arguments.length > 1000) {
+        copy.arguments = copy.arguments.slice(0, 1000) + '... [truncated]';
+      }
+      return copy;
+    });
+  }
+
+  // 3. Byte size safety clamp (ensures total document stays well below Firestore 1,048,576 bytes limit)
+  try {
+    const serialized = JSON.stringify(clean);
+    if (serialized.length > 750000) {
+      console.warn(`[Firestore Guard] Message payload is large (${serialized.length} bytes). Compacting...`);
+      if (typeof clean.text === 'string' && clean.text.length > 50000) {
+        clean.text = clean.text.slice(0, 50000) + '\n\n... [message trimmed for storage limit]';
+      }
+      delete clean.passOnTrace;
+      delete clean.toolCalls;
+      delete clean.rawModelResponse;
+    }
+  } catch {}
+
+  return clean;
+}
+
 // Initialize Firestore with explicit named database ID
 const databaseId = firebaseConfigData.firestoreDatabaseId || "ai-studio-prosana-a619d218-5929-4c02-b550-15e9e8a52fce";
 export const db = (() => {
@@ -291,12 +349,21 @@ export const createChatSession = async (
 
     if (sessionData?.initialMessages && sessionData.initialMessages.length > 0) {
       for (const msg of sessionData.initialMessages) {
-        if (msg.id) {
-          const cleanMsg = sanitizeForFirestore({ ...msg });
-          delete cleanMsg.actionProposal;
-          delete cleanMsg.thinkingMeta;
-          const msgRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
-          await setDoc(msgRef, cleanMsg, { merge: true });
+        if (msg?.id) {
+          try {
+            const cleanMsg = prepareMessageForFirestore(msg);
+            const msgRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
+            await setDoc(msgRef, cleanMsg, { merge: true });
+          } catch (mErr) {
+            console.warn(`[Firestore Session] Compact write fallback for message ${msg.id}:`, mErr);
+            const fallbackRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
+            await setDoc(fallbackRef, {
+              id: msg.id,
+              role: msg.role || 'assistant',
+              text: String(msg.text || '').slice(0, 10000),
+              createdAt: msg.createdAt || nowIso
+            }, { merge: true }).catch(() => {});
+          }
         }
       }
     }
@@ -361,12 +428,26 @@ export const saveChatSessionData = async (
     if (updates.messages && updates.messages.length > 0) {
       const msgPromises = updates.messages.map(async (msg) => {
         if (!msg || !msg.id) return;
-        const cleanMsg = sanitizeForFirestore({ ...msg });
-        delete cleanMsg.actionProposal;
-        delete cleanMsg.thinkingMeta;
-
-        const msgRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
-        await setDoc(msgRef, cleanMsg, { merge: true });
+        try {
+          const cleanMsg = prepareMessageForFirestore(msg);
+          const msgRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
+          await setDoc(msgRef, cleanMsg, { merge: true });
+        } catch (msgErr: any) {
+          console.warn(`[Firestore Guard] Size or write error on message ${msg.id}. Applying compact write fallback.`, msgErr?.message);
+          // Fallback to essential content only
+          try {
+            const msgRef = doc(db, "users", safeUid, "agent_sessions", sessionId, "messages", msg.id);
+            await setDoc(msgRef, {
+              id: msg.id,
+              role: msg.role || 'assistant',
+              text: String(msg.text || '').slice(0, 10000),
+              createdAt: msg.createdAt || nowIso,
+              isCompactedDueToSize: true
+            }, { merge: true });
+          } catch (innerErr) {
+            console.error(`[Firestore Guard] Failed minimal write for message ${msg.id}:`, innerErr);
+          }
+        }
       });
       await Promise.all(msgPromises);
     }

@@ -14,6 +14,16 @@ import { getBaselineWeatherData, searchLocations, reverseGeocode } from "./src/a
 import { saveChatMessage } from "./src/lib/firebase.js";
 import { getUniversalNotepad } from "./src/agent/universalNotepad.js";
 import { getOrGenerateCompanionSignals } from "./src/agent/services/companionSignalsService.js";
+import {
+  withValidGoogleToken,
+  getOrRenewValidToken,
+  refreshGoogleAccessToken,
+  exchangeAuthCodeForTokens,
+  getStoredToken,
+  saveStoredToken,
+  isTokenExpired,
+  SAFETY_BUFFER_MS
+} from "./src/services/googleFitTokenManager.js";
 
 dotenv.config();
 
@@ -238,12 +248,10 @@ app.get("/api/wearables/providers", (_req, res) => {
   });
 });
 
-// 2. Real Google Fit REST API Live Sync
-app.post("/api/wearables/google-fit/sync", async (req, res) => {
-  const { userId, accessToken, startTimeMillis, endTimeMillis } = req.body;
-  if (!userId || !accessToken) {
-    return res.status(400).json({ error: "userId and Google OAuth accessToken are required" });
-  }
+// 2. Real Google Fit REST API Live Sync (Wrapped with Token Management & Auto-Renewal)
+app.post("/api/wearables/google-fit/sync", withValidGoogleToken(async (req, res, tokenContext) => {
+  const { startTimeMillis, endTimeMillis } = req.body;
+  const { userId, accessToken, expiresAt, refreshed } = tokenContext;
 
   // Default time window: Today (start of day to now)
   const now = Date.now();
@@ -281,7 +289,7 @@ app.post("/api/wearables/google-fit/sync", async (req, res) => {
       if (googleRes.status === 401) {
         return res.status(401).json({
           error: "Google OAuth access token expired or invalid. Please re-authenticate.",
-          code: "UNAUTHORIZED"
+          code: "TOKEN_EXPIRED_REAUTH_REQUIRED"
         });
       }
       return res.status(googleRes.status).json({
@@ -326,23 +334,28 @@ app.post("/api/wearables/google-fit/sync", async (req, res) => {
 
         for (const point of points) {
           const values = point.value || [];
-          if (dataSourceId.includes("step_count") || dataSourceId.includes("derived:com.google.step_count")) {
-            const steps = values[0]?.intVal || 0;
-            bucketSteps += steps;
-          } else if (dataSourceId.includes("calories") || dataSourceId.includes("derived:com.google.calories")) {
-            const cal = values[0]?.fpVal || 0;
-            bucketCalories += Math.round(cal * 10) / 10;
-          } else if (dataSourceId.includes("heart_rate") || dataSourceId.includes("derived:com.google.heart_rate")) {
+          const dataSourceIdLower = dataSourceId.toLowerCase();
+          if (dataSourceIdLower.includes("step_count") || dataSourceIdLower.includes("step")) {
+            const steps = Number(values[0]?.intVal ?? values[0]?.fpVal ?? 0);
+            if (!isNaN(steps) && steps > 0) {
+              bucketSteps += steps;
+            }
+          } else if (dataSourceIdLower.includes("calories") || dataSourceIdLower.includes("expended")) {
+            const cal = Number(values[0]?.fpVal ?? values[0]?.intVal ?? 0);
+            if (!isNaN(cal) && cal > 0) {
+              bucketCalories += Math.round(cal * 10) / 10;
+            }
+          } else if (dataSourceIdLower.includes("heart_rate") || dataSourceIdLower.includes("bpm")) {
             // [avg, max, min] or single val
-            const avg = values[0]?.fpVal;
-            const max = values[1]?.fpVal;
-            const min = values[2]?.fpVal;
-            if (avg) {
+            const avg = values[0]?.fpVal ?? values[0]?.intVal;
+            const max = values[1]?.fpVal ?? values[1]?.intVal;
+            const min = values[2]?.fpVal ?? values[2]?.intVal;
+            if (avg != null && !isNaN(avg) && avg > 0) {
               bucketAvgHr = Math.round(avg);
               hrSum += avg;
               hrCount++;
-              if (min && min < minHr) minHr = Math.round(min);
-              if (max && max > maxHr) maxHr = Math.round(max);
+              if (min != null && min < minHr) minHr = Math.round(min);
+              if (max != null && max > maxHr) maxHr = Math.round(max);
             }
           }
         }
@@ -351,7 +364,7 @@ app.post("/api/wearables/google-fit/sync", async (req, res) => {
       totalSteps += bucketSteps;
       totalCalories += bucketCalories;
 
-      // Only add to samples if bucket falls within time and has data or represents timeline
+      // Add to samples if bucket falls within time window
       realSamples.push({
         timestamp: new Date(bucketStartMs).toISOString(),
         unixMs: bucketStartMs,
@@ -383,12 +396,14 @@ app.post("/api/wearables/google-fit/sync", async (req, res) => {
       samples: realSamples.slice(-30)
     });
 
-    console.log(`[Google Fit Sync Success] User ${userId}: ${totalSteps} steps, ${avgHeartRate} avg HR across ${realSamples.length} 20-min buckets.`);
+    console.log(`[Google Fit Sync Success] User ${userId}: ${totalSteps} steps, ${avgHeartRate} avg HR across ${realSamples.length} 20-min buckets. Token refreshed: ${refreshed}`);
 
     res.json({
       status: "ok",
       provider: "google_fit",
       syncedAt: new Date().toISOString(),
+      tokenRefreshed: refreshed,
+      tokenExpiresAt: expiresAt,
       summary,
       samples: realSamples
     });
@@ -396,6 +411,150 @@ app.post("/api/wearables/google-fit/sync", async (req, res) => {
     console.error("[Google Fit Sync Unexpected Exception]", err);
     res.status(500).json({ error: "Failed to connect to Google Fitness API", details: err?.message });
   }
+}));
+
+// 2b. Google Fit Sleep & Workout Sessions Ingestion (Wrapped with Token Management)
+app.post("/api/wearables/google-fit/sessions", withValidGoogleToken(async (req, res, tokenContext) => {
+  const { startTimeMillis, endTimeMillis } = req.body;
+  const { userId, accessToken, expiresAt, refreshed } = tokenContext;
+
+  const now = Date.now();
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+
+  const startIso = new Date(Number(startTimeMillis) || (now - 7 * 24 * 3600 * 1000)).toISOString();
+  const endIso = new Date(Number(endTimeMillis) || now).toISOString();
+
+  try {
+    const url = `https://www.googleapis.com/fitness/v1/users/me/sessions?startTime=${encodeURIComponent(startIso)}&endTime=${encodeURIComponent(endIso)}`;
+    const googleRes = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      }
+    });
+
+    if (!googleRes.ok) {
+      const errText = await googleRes.text();
+      return res.status(googleRes.status).json({ error: "Failed to fetch Google Fit sessions", details: errText });
+    }
+
+    const sessionData = await googleRes.json();
+    res.json({
+      status: "ok",
+      userId,
+      tokenRefreshed: refreshed,
+      tokenExpiresAt: expiresAt,
+      sessions: sessionData.session || []
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch Google Fit sessions", details: err?.message });
+  }
+}));
+
+// 2c. Explicit Token Refresh & Health Endpoint
+app.post("/api/wearables/google-fit/refresh-token", async (req, res) => {
+  const { userId, refreshToken } = req.body;
+  if (!userId) {
+    return res.status(400).json({ error: "userId is required" });
+  }
+
+  const existingRecord = getStoredToken(userId);
+  const tokenToUse = refreshToken || existingRecord?.refreshToken;
+
+  if (!tokenToUse) {
+    return res.status(400).json({
+      error: "No refresh token available. User re-authentication via Google Identity Services required.",
+      code: "NO_REFRESH_TOKEN"
+    });
+  }
+
+  try {
+    const refreshed = await refreshGoogleAccessToken(tokenToUse);
+    res.json({
+      status: "ok",
+      userId,
+      accessToken: refreshed.accessToken,
+      expiresIn: refreshed.expiresIn,
+      expiresAt: refreshed.expiresAt,
+      tokenType: refreshed.tokenType
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      error: err?.message || "Failed to refresh Google OAuth token",
+      code: "REFRESH_FAILED"
+    });
+  }
+});
+
+// 2d. Authorization Code Grant Exchange Endpoint (for OAuth code flows)
+app.post("/api/wearables/google-fit/exchange-code", async (req, res) => {
+  const { code, redirectUri, userId } = req.body;
+  if (!code || !redirectUri) {
+    return res.status(400).json({ error: "code and redirectUri are required" });
+  }
+
+  try {
+    const tokens = await exchangeAuthCodeForTokens(code, redirectUri);
+    if (userId) {
+      const existing = getStoredToken(userId);
+      saveStoredToken({
+        userId,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken || existing?.refreshToken,
+        expiresAt: tokens.expiresAt,
+        scope: tokens.scope,
+        tokenType: tokens.tokenType,
+        status: 'valid'
+      });
+    }
+
+    res.json({
+      status: "ok",
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: tokens.expiresIn,
+      expiresAt: tokens.expiresAt,
+      tokenType: tokens.tokenType
+    });
+  } catch (err: any) {
+    res.status(400).json({
+      error: err?.message || "Failed to exchange authorization code",
+      code: "EXCHANGE_FAILED"
+    });
+  }
+});
+
+// 2e. Token Status & Expiration Inspection Endpoint
+app.get("/api/wearables/google-fit/token-status/:userId", (req, res) => {
+  const { userId } = req.params;
+  const stored = getStoredToken(userId);
+
+  if (!stored || !stored.accessToken) {
+    return res.json({
+      status: "disconnected",
+      hasToken: false,
+      isExpired: true,
+      minutesRemaining: 0
+    });
+  }
+
+  const now = Date.now();
+  const msRemaining = Math.max(0, stored.expiresAt - now);
+  const minutesRemaining = Math.round(msRemaining / (60 * 1000));
+  const isExpired = isTokenExpired(stored.expiresAt, SAFETY_BUFFER_MS);
+
+  res.json({
+    status: isExpired ? "expired" : "valid",
+    hasToken: true,
+    hasRefreshToken: Boolean(stored.refreshToken),
+    expiresAt: stored.expiresAt,
+    minutesRemaining,
+    isExpired,
+    lastRefreshedAt: stored.lastRefreshedAt,
+    lastUpdated: stored.updatedAt
+  });
 });
 
 // 2. Connect Provider

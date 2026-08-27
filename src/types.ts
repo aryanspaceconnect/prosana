@@ -320,8 +320,25 @@ export interface WearableConnectionState {
   connectedAt: string;
   autoSyncIntervalMinutes: number; // default 20
   accessToken?: string;
+  refreshToken?: string;
+  expiresAt?: number; // Unix epoch millisecond timestamp when token expires
+  tokenType?: string;
+  lastRefreshedAt?: string;
   accountEmail?: string;
   errorMessage?: string;
+}
+
+export interface GoogleOAuthTokenRecord {
+  userId: string;
+  accessToken: string;
+  refreshToken?: string;
+  expiresAt: number; // Unix timestamp in ms
+  scope?: string;
+  tokenType?: string;
+  lastRefreshedAt?: string;
+  status: 'valid' | 'expired' | 'revoked' | 'error';
+  errorMessage?: string;
+  updatedAt?: string;
 }
 
 export interface WearableSample {
