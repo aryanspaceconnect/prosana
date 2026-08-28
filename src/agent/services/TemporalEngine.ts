@@ -71,13 +71,16 @@ function getWeekOfMonth(date: Date): number {
 
 /**
  * Computes deterministic temporal state on-demand at the exact instant called.
- * Guarantees zero time-skew with dual timestamp support (Server Time vs User Local Time).
+ * Guarantees zero time-skew with exact User Local Time derived from profile location or timezone.
  */
-export function computeDeterministicTemporalState(timeZone?: string): DeterministicTemporalState {
+export function computeDeterministicTemporalState(
+  timeZoneOrCandidate?: string,
+  locationName?: string
+): DeterministicTemporalState {
   const now = new Date();
   const monotonicAnchor = process.hrtime.bigint();
-  const targetTz = resolveUserTimeZone(timeZone);
-  const dual = getDualTimestamps(now, targetTz);
+  const targetTz = resolveUserTimeZone(timeZoneOrCandidate, locationName);
+  const dual = getDualTimestamps(now, targetTz, locationName);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -104,7 +107,6 @@ export function computeDeterministicTemporalState(timeZone?: string): Determinis
   const hours24 = String(dual.localHour24).padStart(2, '0');
   const minutes = String(dual.localMinutes).padStart(2, '0');
   const seconds = String(now.getSeconds()).padStart(2, '0');
-  const milliseconds = String(now.getMilliseconds()).padStart(3, '0');
 
   const time24h = `${hours24}:${minutes}:${seconds}`;
   const hours12Num = dual.localHour24 % 12 || 12;
@@ -152,39 +154,52 @@ export function computeDeterministicTemporalState(timeZone?: string): Determinis
  */
 export function validateAndEnforceFreshness(
   state: DeterministicTemporalState,
-  maxStaleMs: number = 3000
+  maxStaleMs: number = 3000,
+  locationName?: string
 ): DeterministicTemporalState {
   const currentMonotonic = process.hrtime.bigint();
   const elapsedMs = Number(currentMonotonic - state.computedAtMonotonic) / 1_000_000;
 
   if (elapsedMs > maxStaleMs) {
     console.warn(`[TemporalEngine:REJECTED_STALE_PAYLOAD] Payload was ${Math.round(elapsedMs)}ms old (exceeded limit of ${maxStaleMs}ms). Re-calculating fresh state immediately.`);
-    return computeDeterministicTemporalState(state.userTimeZone);
+    return computeDeterministicTemporalState(state.userTimeZone, locationName);
   }
 
   return state;
 }
 
 /**
- * Generates an ultra-compact, token-efficient prompt context header (~85 tokens).
- * Explicitly distinguishes User Local Time from Server UTC to prevent hallucinated early morning/night discrepancies.
+ * Generates prompt context header for user local time awareness (~65 tokens).
+ * Strictly emphasizes the user's local clock at their configured profile location or local timezone.
  */
-export function getTemporalPromptHeader(timeZone?: string): string {
+export function getTemporalPromptHeader(
+  timeZoneOrCandidate?: string,
+  userProfile?: any,
+  userLocation?: { lat?: number; lon?: number; locationName?: string }
+): string {
   try {
-    let state = computeDeterministicTemporalState(timeZone);
-    state = validateAndEnforceFreshness(state, 3000);
+    const locationName = userLocation?.locationName || userProfile?.settings?.locationName || userProfile?.locationName;
+    const targetTz = resolveUserTimeZone(
+      timeZoneOrCandidate || userProfile?.settings?.timezone || userProfile?.timezone,
+      locationName
+    );
 
-    return `[REAL-TIME DUAL-TEMPORAL GROUND TRUTH - UNCONTROVERTIBLE]
-User Local Time: ${state.dayOfWeekName}, ${state.monthName} ${state.dayOfMonth}, ${state.year} at ${state.time12h} (${state.time24h} | Timezone: ${state.userTimeZone})
+    let state = computeDeterministicTemporalState(targetTz, locationName);
+    state = validateAndEnforceFreshness(state, 3000, locationName);
+
+    const locationTag = locationName ? ` | Location: ${locationName}` : '';
+    const locationRule = locationName ? ` at the user's location (${locationName})` : '';
+
+    return `[REAL-TIME USER TEMPORAL CONTEXT - GROUND TRUTH]
+User Local Time: ${state.dayOfWeekName}, ${state.monthName} ${state.dayOfMonth}, ${state.year} at ${state.time12h} (${state.time24h} | Timezone: ${state.userTimeZone}${locationTag})
 Circadian Phase: ${state.circadianPhase} (${state.circadianPeriod.toUpperCase()})
-Server Time (UTC): ${state.serverTime} (${state.serverTime24h} | Epoch: ${state.epochMs})
 Calendar: Year ${state.year} (${state.quarter}) | Day ${state.dayOfMonth} (Day ${state.dayOfYear}/365) | Week ${state.weekOfYear} of year
-Rule: When interacting with the user or discussing routines, AM/PM, sleep, or biometric graphs, ALWAYS evaluate and speak relative to the USER LOCAL TIME (${state.time12h}, ${state.userTimeZone}), NOT the Server UTC clock. Server Time is strictly for backend telemetry logging continuity.`;
+Rule: When interacting with the user, calculating circadian windows, AM/PM routines, sleep, or time-relative advice, ALWAYS evaluate and speak relative to the USER LOCAL TIME (${state.time12h}, ${state.userTimeZone})${locationRule}. Never reference backend UTC or server-side clock.`;
   } catch (err) {
     console.warn('[TemporalEngine] Error computing temporal header, returning safe fallback:', err);
     const now = new Date();
-    return `[REAL-TIME TEMPORAL GROUND TRUTH - UNCONTROVERTIBLE]
-Local: ${now.toISOString()} | Epoch: ${now.getTime()}
-Rule: This is absolute real-time ground truth at request dispatch. Disregard conflicting historical timestamps.`;
+    return `[REAL-TIME TEMPORAL GROUND TRUTH]
+User Local Time: ${now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} at ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+Rule: This is absolute real-time ground truth. Always speak relative to the user's local time.`;
   }
 }

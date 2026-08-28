@@ -829,14 +829,20 @@ export const AIAgentChat: React.FC<AIAgentChatProps> = ({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-user-timezone': clientTimeZone
+          'x-user-timezone': userProfile?.settings?.timezone || clientTimeZone
         },
         signal: controller.signal,
         body: JSON.stringify({
           userId,
           message: apiMessageText,
           sessionId: activeSessionId,
-          userTimeZone: clientTimeZone,
+          userTimeZone: userProfile?.settings?.timezone || clientTimeZone,
+          userProfile,
+          userLocation: userProfile?.settings?.locationName ? {
+            locationName: userProfile.settings.locationName,
+            lat: userProfile.settings.latitude,
+            lon: userProfile.settings.longitude
+          } : undefined,
           attachments: currentAttachments,
           history: updatedMessages.map(m => ({
             role: m.role,

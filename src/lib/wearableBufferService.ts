@@ -51,7 +51,7 @@ export const WEARABLE_PROVIDERS: WearableProviderMeta[] = [
     category: 'coming_soon',
     status: 'coming_soon',
     badge: 'Coming Soon',
-    icon: 'logos:apple',
+    icon: 'ri:apple-fill',
     color: '#000000',
     description: 'Apple HealthKit requires iOS Companion App for local sandbox bridge. Direct Web API coming in companion release.',
     metricsSupported: ['HRV (SDNN)', 'Resting Heart Rate', 'SpO2 Blood Oxygen', 'Active Burn', 'Sleep Architecture']

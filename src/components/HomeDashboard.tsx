@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Icon } from '@iconify/react';
 import { UserProfile, FacialScanResult, DailyBriefing, WearableBufferState } from '../types';
 import { pickHomeGreeting, GreetingConfig } from '../lib/homeGreetings';
+import { getDualTimestamps, resolveUserTimeZone } from '../utils/timeZoneHelper';
 import { wearableBufferService, calculateBatchSummary } from '../lib/wearableBufferService';
 import { WearablesHub } from './WearablesHub';
 import { formatCalorieUnit } from './BiometricGraphView';
@@ -83,47 +84,64 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
   const userAgeGroup = userProfile?.settings?.onboardingProfile?.ageGroup || '';
   const userGender = userProfile?.gender || userProfile?.settings?.gender || userProfile?.settings?.onboardingProfile?.gender || '';
 
-  const [currentTime, setCurrentTime] = useState(() => {
-    const now = new Date();
-    return now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
-  });
+  const profileLocationName = userProfile?.settings?.locationName;
+  const profileTimezone = userProfile?.settings?.timezone;
+  const targetTz = resolveUserTimeZone(profileTimezone, profileLocationName);
+
+  const computeUserFormattedTime = () => {
+    const dt = getDualTimestamps(new Date(), targetTz, profileLocationName);
+    const h12 = dt.localHour24 % 12 || 12;
+    const ampm = dt.localHour24 >= 12 ? 'PM' : 'AM';
+    return `${h12}:${String(dt.localMinutes).padStart(2, '0')} ${ampm}`;
+  };
+
+  const computeUserLocalHour = () => {
+    const dt = getDualTimestamps(new Date(), targetTz, profileLocationName);
+    return dt.localHour24;
+  };
+
+  const [currentTime, setCurrentTime] = useState<string>(() => computeUserFormattedTime());
 
   const [greetingConfig, setGreetingConfig] = useState<GreetingConfig>(() =>
     pickHomeGreeting({
       name: rawName,
       ageGroup: userAgeGroup,
       gender: userGender,
-      cycleOffset: 0
+      cycleOffset: 0,
+      forceHour: computeUserLocalHour()
     })
   );
 
   useEffect(() => {
+    const localHour = computeUserLocalHour();
+    setCurrentTime(computeUserFormattedTime());
     setGreetingConfig(
       pickHomeGreeting({
         name: rawName,
         ageGroup: userAgeGroup,
         gender: userGender,
-        cycleOffset: variantOffset
+        cycleOffset: variantOffset,
+        forceHour: localHour
       })
     );
 
     const interval = setInterval(() => {
-      const now = new Date();
-      setCurrentTime(now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }));
+      setCurrentTime(computeUserFormattedTime());
       // Automatically refresh greeting when entering a new hour/window
       setGreetingConfig(prev => {
         const fresh = pickHomeGreeting({
           name: rawName,
           ageGroup: userAgeGroup,
           gender: userGender,
-          cycleOffset: variantOffset
+          cycleOffset: variantOffset,
+          forceHour: computeUserLocalHour()
         });
         return fresh;
       });
-    }, 60000); // 1-minute interval for time & hour checks
+    }, 30000); // 30-second interval for responsive user-local clock
 
     return () => clearInterval(interval);
-  }, [rawName, userAgeGroup, userGender, variantOffset]);
+  }, [rawName, userAgeGroup, userGender, variantOffset, targetTz, profileLocationName]);
 
   const cycleGreeting = () => {
     setVariantOffset(prev => prev + 1);
@@ -554,7 +572,7 @@ export const HomeDashboard: React.FC<HomeDashboardProps> = ({
                     <Icon icon="logos:google-fit" className="w-4 h-4" />
                   </div>
                   <div className="w-7 h-7 rounded-full bg-slate-900 text-white shadow-2xs border border-slate-700 flex items-center justify-center text-xs">
-                    <Icon icon="logos:apple" className="w-3.5 h-3.5" />
+                    <Icon icon="ri:apple-fill" className="w-3.5 h-3.5 text-white" />
                   </div>
                 </div>
                 <div>

@@ -27,6 +27,7 @@ export interface UserSettings {
   locationName?: string;
   latitude?: number;
   longitude?: number;
+  timezone?: string;
   isPremium?: boolean;
   responseStyle?: 'professional_medical' | 'casual_conversational' | 'cool_friendly';
   companionSignalsEnabled?: boolean;

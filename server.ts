@@ -25,6 +25,8 @@ import {
   SAFETY_BUFFER_MS
 } from "./src/services/googleFitTokenManager.js";
 import { ServerBiometricEngine } from "./src/services/biometricEngine.js";
+import { getTemporalPromptHeader } from "./src/agent/services/TemporalEngine.js";
+import { resolveUserTimeZone } from "./src/utils/timeZoneHelper.js";
 
 dotenv.config();
 
@@ -1250,7 +1252,17 @@ app.post("/api/chat", async (req, res) => {
     }
 
     const userCtx = getUserProfileContextString(userProfile);
-    const systemInstruction = `You are prosana, a sophisticated AI skin health & wellness thinking companion.
+    const locationName = userProfile?.settings?.locationName;
+    const clientHeaderTz = req.headers["x-user-timezone"] as string;
+    const resolvedTz = resolveUserTimeZone(
+      userProfile?.settings?.timezone || clientHeaderTz,
+      locationName
+    );
+    const temporalHeader = getTemporalPromptHeader(resolvedTz, userProfile, { locationName });
+
+    const systemInstruction = `${temporalHeader}
+
+You are prosana, a sophisticated AI skin health & wellness thinking companion.
 User Name: ${userProfile?.settings?.preferredName || userProfile?.displayName || 'User'}.
 ${userCtx}
 Selected Agent Thinking Strategy: ${thinkingAnalysis.thinkingMode.toUpperCase()} THINKING MODE (Calculated Complexity: ${thinkingAnalysis.complexityScore}/10).
@@ -1333,7 +1345,17 @@ app.post("/api/chat/stream", async (req, res) => {
     }));
 
     const userCtx = getUserProfileContextString(userProfile);
-    const systemInstruction = `You are prosana, a sophisticated AI skin health & wellness thinking companion.
+    const locationName = userProfile?.settings?.locationName;
+    const clientHeaderTz = req.headers["x-user-timezone"] as string;
+    const resolvedTz = resolveUserTimeZone(
+      userProfile?.settings?.timezone || clientHeaderTz,
+      locationName
+    );
+    const temporalHeader = getTemporalPromptHeader(resolvedTz, userProfile, { locationName });
+
+    const systemInstruction = `${temporalHeader}
+
+You are prosana, a sophisticated AI skin health & wellness thinking companion.
 User Name: ${userProfile?.settings?.preferredName || userProfile?.displayName || 'User'}.
 ${userCtx}
 Selected Agent Thinking Strategy: ${thinkingAnalysis.thinkingMode.toUpperCase()} THINKING MODE (Calculated Complexity: ${thinkingAnalysis.complexityScore}/10).
@@ -1389,8 +1411,12 @@ Always address the user warmly using their Preferred Name if available. Never us
 // prosana Multi-step Agent Protocol Endpoint Handler
 const handleAgentCall = async (req: express.Request, res: express.Response) => {
   try {
-    const { userId = "guest_user", message, sessionId, history, attachments, userTimeZone } = req.body;
-    const clientTimeZone = userTimeZone || (req.headers["x-user-timezone"] as string) || undefined;
+    const { userId = "guest_user", message, sessionId, history, attachments, userTimeZone, userProfile, userLocation } = req.body;
+    const locationName = userLocation?.locationName || userProfile?.settings?.locationName;
+    const clientTimeZone = resolveUserTimeZone(
+      userTimeZone || userProfile?.settings?.timezone || (req.headers["x-user-timezone"] as string),
+      locationName
+    );
     if (!message || typeof message !== "string") {
       return res.status(400).json({ error: "Missing required string field 'message'" });
     }

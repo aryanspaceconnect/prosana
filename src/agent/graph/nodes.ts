@@ -17,9 +17,10 @@ export async function buildSystemPrompt(
   userId: string,
   sessionNotepadContent?: string,
   userLocation?: { lat?: number; lon?: number; locationName?: string },
-  userProfile?: any
+  userProfile?: any,
+  userTimeZone?: string
 ): Promise<string> {
-  const temporalHeader = getTemporalPromptHeader();
+  const temporalHeader = getTemporalPromptHeader(userTimeZone, userProfile, userLocation);
   const weatherHeader = await getBaselineWeatherPromptHeader(userLocation?.lat, userLocation?.lon, userLocation?.locationName);
   const notepadStr = sessionNotepadContent && sessionNotepadContent.trim().length > 0
     ? sessionNotepadContent
@@ -222,7 +223,7 @@ export async function reasoningNode(state: AgentState) {
     lon: profileSettings?.longitude,
     locationName: profileSettings?.locationName
   };
-  const defaultSystemPrompt = await buildSystemPrompt(state.userId, currentNotepad, userLoc, userProfile);
+  const defaultSystemPrompt = await buildSystemPrompt(state.userId, currentNotepad, userLoc, userProfile, state.userTimeZone);
   const systemPrompt = state.systemPrompt
     ? `${state.systemPrompt}\n\n=== GENERAL WORKSPACE CONTEXT ===\n${defaultSystemPrompt}`
     : defaultSystemPrompt;

@@ -858,13 +858,8 @@ export const BiometricGraphView: React.FC<BiometricGraphViewProps> = ({
                             <div>
                               <div className="flex items-center space-x-1.5">
                                 <span className="font-bold text-white text-sm">{data.timeLabel}</span>
-                                <span className="text-[9.5px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Local</span>
+                                <span className="text-[9.5px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-semibold">Local Time</span>
                               </div>
-                              {data.serverTimeLabel && (
-                                <span className="text-[10px] text-slate-400 block font-mono">
-                                  Server UTC: {data.serverTimeLabel}
-                                </span>
-                              )}
                             </div>
                             {data.isAnomaly && (
                               <span className="px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 text-[9.5px] font-bold border border-rose-500/30">
